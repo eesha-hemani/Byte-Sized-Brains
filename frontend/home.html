@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDocAI - Home</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/aachen-bold" rel="stylesheet">
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            min-height: 100vh;
+            background: url('background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5%;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7));
+            z-index: -1;
+        }
+        
+        /* Metro image styling */
+        .metro-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-right: 40px;
+        }
+        
+        .metro-image {
+            width: 120%;
+            max-width: 1000px;
+            height: auto;
+            opacity: 0;
+            transform: translateX(-50px);
+            animation: metroSlideIn 1.5s ease-out forwards;
+            filter: drop-shadow(0 0 25px rgba(255, 223, 0, 0.6));
+        }
+        
+        @keyframes metroSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50px) scale(1.2);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+        
+        /* Content styling */
+        .content {
+            flex: 1;
+            text-align: right;
+            padding-left: 40px;
+        }
+        
+        .title-container {
+            display: inline-block;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .title {
+            font-size: 8rem;
+            font-weight: 800;
+            color: #ffdf00;
+            margin-bottom: 15px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease-out 0.5s forwards;
+            text-shadow: 3px 3px 12px rgba(0, 0, 0, 0.8);
+            line-height: 1.1;
+        }
+        
+        .title-underline {
+            height: 6px;
+            width: 80%;
+            background: #ffdf00;
+            margin: 0 auto;
+            border-radius: 3px;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 1s forwards;
+            box-shadow: 0 0 10px rgba(255, 223, 0, 0.5);
+        }
+        
+        .tagline {
+            font-size: 3rem;
+            font-weight: 400;
+            font-style: italic;
+            color: #ffdf00;
+            margin-bottom: 50px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease-out 0.8s forwards;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+            line-height: 1.2;
+        }
+        
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        
+        /* Buttons styling */
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 25px;
+        }
+        
+        .btn {
+            font-family: 'Aachen Bold', sans-serif;
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 15px 35px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease-out forwards;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-about {
+            background: linear-gradient(145deg, #ffdf00, #ffaa00);
+            color: #000;
+            animation-delay: 1.1s;
+        }
+        
+        .btn-login {
+            background: linear-gradient(145deg, #ffdf00, #ffaa00);
+            color: #000;
+            animation-delay: 1.4s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(255, 223, 0, 0.5);
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1600px) {
+            .title {
+                font-size: 7rem;
+            }
+            
+            .tagline {
+                font-size: 2.5rem;
+            }
+            
+            .metro-image {
+                width: 110%;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .title {
+                font-size: 6rem;
+            }
+            
+            .tagline {
+                font-size: 2.2rem;
+            }
+            
+            .metro-image {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+                justify-content: center;
+                padding: 40px 5%;
+            }
+            
+            .metro-container {
+                padding-right: 0;
+                margin-bottom: 40px;
+            }
+            
+            .metro-image {
+                width: 90%;
+                max-width: 800px;
+            }
+            
+            .content {
+                text-align: center;
+                padding-left: 0;
+            }
+            
+            .buttons {
+                justify-content: center;
+            }
+            
+            .title {
+                font-size: 5rem;
+            }
+            
+            .tagline {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .title {
+                font-size: 4rem;
+            }
+            
+            .tagline {
+                font-size: 1.8rem;
+                margin-bottom: 40px;
+            }
+            
+            .metro-image {
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .title {
+                font-size: 3.5rem;
+            }
+            
+            .tagline {
+                font-size: 1.6rem;
+                margin-bottom: 30px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 250px;
+                font-size: 1.2rem;
+                padding: 14px 30px;
+            }
+            
+            .metro-image {
+                width: 110%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="metro-container">
+        <img src="metro.png" alt="Metro" class="metro-image">
+    </div>
+    
+    <div class="content">
+        <div class="title-container">
+            <h1 class="title">KDocAI</h1>
+            <div class="title-underline"></div>
+        </div>
+        <p class="tagline">Secure. Streamline. Smart.</p>
+        
+        <div class="buttons">
+            <button class="btn btn-about" onclick="window.location.href='about.html'">About</button>
+            <button class="btn btn-login" onclick="window.location.href='login.html'">Login</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('KDocAI Home Page loaded successfully');
+        });
+    </script>
+</body>
+</html>

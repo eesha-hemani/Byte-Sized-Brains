@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochi Metro Rail - About KDocAI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arimo', sans-serif;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: url('/src/background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            padding: 20px;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0, 61, 77, 0.85), rgba(0, 34, 41, 0.9));
+            z-index: -1;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: #00333d;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            color: #ffd700;
+            border: 2px solid #ffd700;
+        }
+        
+        .header {
+            background: #002229;
+            padding: 20px;
+            text-align: center;
+            color: #ffd700;
+            position: relative;
+            border-bottom: 2px solid #ffd700;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: 'Playfair Display', serif;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.4);
+        }
+        
+        .header h1 i {
+            margin-right: 10px;
+            color: #ffd700;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: #004b5c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: #ffd700;
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .content {
+            padding: 30px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .content h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-weight: 800;
+            font-family: 'Playfair Display', serif;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+            font-size: 26px;
+            text-align: center;
+            border-bottom: 2px solid #ffd700;
+            padding-bottom: 10px;
+        }
+        
+        .content p {
+            color: #ffd700;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .mission {
+            margin: 25px 0;
+            padding: 20px;
+            background: #002229;
+            border-radius: 8px;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .mission h3 {
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .mission h3 i {
+            margin-right: 10px;
+            color: #ffd700;
+        }
+        
+        .solution {
+            background: #002229;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-right: 4px solid #ffd700;
+        }
+        
+        .solution h3 {
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .solution h3 i {
+            margin-right: 10px;
+            color: #ffd700;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: #002229;
+            border-top: 1px solid #005a6a;
+            font-size: 14px;
+            color: #ffd700;
+        }
+        
+        .footer a {
+            color: #ffd700;
+            text-decoration: none;
+            font-weight: 700;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+            color: #ffdf40;
+        }
+        
+        .btn-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            background: #ffd700;
+            color: #002229;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 0 10px;
+            font-weight: 700;
+            font-family: 'Arimo', sans-serif;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            background: #ffdf40;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 26px;
+            }
+            
+            .btn {
+                display: block;
+                margin: 10px auto;
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-train"></i>
+            </div>
+            <h1><i class="fas fa-subway"></i> Kochi Metro Rail</h1>
+            <p>About KDocAI - Document Intelligence Solution</p>
+        </div>
+        
+        <div class="content">
+            <h2>Transforming Document Management at KMRL</h2>
+            
+            <p>Since commencing operations in 2017, Kochi Metro Rail Limited (KMRL) has evolved into a complex, multidisciplinary organization that extends far beyond train services. Each day, the enterprise manages thousands of documents spanning engineering, procurement, safety, compliance, HR, and finance.</p>
+            
+            <div class="mission">
+                <h3><i class="fas fa-exclamation-circle"></i> The Challenge</h3>
+                <p>The growing scale and diversity of this information present challenges in timeliness, accuracy, and institutional knowledge retention. As KMRL expands with new corridors, depots, and digital technologies, these challenges intensify, requiring innovative solutions to maintain operational excellence.</p>
+            </div>
+            
+            <div class="solution">
+                <h3><i class="fas fa-lightbulb"></i> Our Mission</h3>
+                <p>Our mission is to enhance operational efficiency, safeguard compliance, and deliver safe, sustainable, and passenger-centric urban mobility for Kochi. We focus on equipping every stakeholder with reliable, traceable, and actionable information to support KMRL's growth and technological advancement.</p>
+            </div>
+            
+            <div class="btn-container">
+                <a href="login.html" class="btn">Login to KDocAI</a>
+                <a href="home.html" class="btn">Home</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>KDocAI - Secure. Streamlined. Smart Document Management</p>
+            <p>&copy; 2025 Kochi Metro Rail Limited. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
