@@ -1,7 +1,9 @@
-flask
+Flask
 pymongo
 requests
 pdfplumber
+bcrypt
+PyJWT
 python-docx
 langdetect
-googletrans==4.0.0-rc1
+googletrans==4.0.0rc1
