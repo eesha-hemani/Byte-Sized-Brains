@@ -254,10 +254,23 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
     # Check if the content is Malayalam
     mal = is_malayalam(extracted, detected_lang)
     
-    if not mal:
-        update_metadata(meta_id, {"translation_status": "not_needed", "language": detected_lang or 'en'})
-        return {"original_meta_id": oid_to_str(meta_id), "translated": False, "reason": "not_malayalam", "language": detected_lang}
     
+    if not mal:
+        # NEW: CLASSIFY NON-MALAYALAM FILES
+        tags, confidence_scores = classify_by_rules(extracted)
+        update_document_with_tags(meta_id, tags, confidence_scores)
+        
+        update_metadata(meta_id, {"translation_status": "not_needed", "language": detected_lang or 'en'})
+        return {
+            "original_meta_id": oid_to_str(meta_id), 
+            "translated": False, 
+            "reason": "not_malayalam", 
+            "language": detected_lang,
+            "tags": tags,  # NEW: Return tags
+            "primary_tag": tags[0] if tags else 'miscellaneous'
+        }
+    
+
     # If Malayalam, create translation
     base_txt = os.path.splitext(filename)[0] + ".txt"
     existing = files_col.find_one({"parent_id": meta_id, "filename": base_txt})
@@ -284,14 +297,119 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
         base_txt, trans_grid_id, "text/plain", "system_translator", 
         "translation", None, meta_id, "en", "translated"
     )
+
+    
+    # NEW: CLASSIFY THE TRANSLATED ENGLISH TEXT
+    tags, confidence_scores = classify_by_rules(translated_text)
+    update_document_with_tags(trans_meta_id, tags, confidence_scores)
     
     update_metadata(meta_id, {"translation_status": "translated", "language": detected_lang})
     
     return {
         "original_meta_id": oid_to_str(meta_id), 
         "translated": True, 
-        "translation_meta_id": oid_to_str(trans_meta_id)
+        "translation_meta_id": oid_to_str(trans_meta_id),
+        "tags": tags,  # NEW: Return tags in response
+        "primary_tag": tags[0] if tags else 'miscellaneous'
     }
+
+# ---------- Rules-Based Classification ----------
+CATEGORIES = {
+    'invoices': [
+        'invoice', 'bill', 'payment', 'amount', 'total', 'due', 'balance', 
+        '$', 'rs', 'usd', 'rupees', 'credit', 'debit', 'tax', 'gst', 'vat',
+        'amount due', 'payment received', 'financial', 'transaction', 'receipt',
+        'quotation', 'estimate', 'charges', 'fee', 'cost', 'price', 'payment terms'
+    ],
+    'safety_reports': [
+        'safety', 'audit', 'risk', 'hazard', 'compliance', 'regulation', 
+        'standard', 'incident', 'accident', 'injury', 'prevention', 'inspection',
+        'emergency', 'protocol', 'guideline', 'safety measure', 'risk assessment',
+        'hse', 'health safety environment', 'safety procedure', 'safety protocol',
+        'safety inspection', 'safety audit', 'risk management', 'hazard analysis'
+    ],
+    'urgent': [
+        'urgent', 'immediate', 'asap', 'critical', 'emergency', 'attention', 
+        'important', 'priority', 'time sensitive', 'deadline', 'expedite',
+        'rush', 'quick', 'without delay', 'prompt action', 'urgently', 'as soon as possible',
+        'time critical', 'high priority', 'urgent attention', 'immediate action'
+    ],
+    'engineering_drawings': [
+        'drawing', 'blueprint', 'cad', 'dimension', 'tolerance', 'specification', 
+        'technical', 'design', 'engineering', 'schematics', 'diagram', 'plan',
+        'layout', 'mechanical', 'electrical', 'civil', 'architecture', 'drafting',
+        'technical drawing', 'engineering diagram', 'construction drawing', 'assembly drawing',
+        'detail drawing', 'fabrication drawing', 'installation drawing'
+    ],
+    'miscellaneous': []  # Catch-all category
+}
+
+def classify_by_rules(text):
+    """Classify text using keyword rules and return multiple tags"""
+    if not text:
+        return ['miscellaneous'], {'miscellaneous': 100.0}
+    
+    text_lower = text.lower()
+    category_scores = {}
+    
+    for category, keywords in CATEGORIES.items():
+        if category == 'miscellaneous':
+            continue
+            
+        score = 0
+        keyword_matches = []
+        
+        for keyword in keywords:
+            # Count occurrences of each keyword
+            occurrences = text_lower.count(keyword.lower())
+            if occurrences > 0:
+                # Base score for finding the keyword + bonus for multiple occurrences
+                score += 10 + (occurrences * 5)
+                keyword_matches.append(f"{keyword}({occurrences})")
+        
+        if score > 0:
+            category_scores[category] = score
+    
+    # Apply threshold and get final tags
+    threshold = 15.0  # Minimum score to include a tag
+    final_tags = [tag for tag, score in category_scores.items() if score >= threshold]
+    
+    # Calculate confidence scores (normalized to 0-100)
+    confidence_scores = {}
+    if category_scores:
+        max_score = max(category_scores.values()) if category_scores else 1
+        for tag, score in category_scores.items():
+            confidence_scores[tag] = min(100, (score / max_score) * 100)
+    
+    # Always include miscellaneous if no other tags meet threshold
+    if not final_tags:
+        final_tags = ['miscellaneous']
+        confidence_scores['miscellaneous'] = 100.0
+    
+    # Sort by confidence score (highest first)
+    final_tags.sort(key=lambda x: confidence_scores[x], reverse=True)
+    
+    return final_tags, confidence_scores
+
+def update_document_with_tags(meta_id, tags, confidence_scores):
+    """Update document with classification tags"""
+    try:
+        files_col.update_one(
+            {"_id": ObjectId(meta_id)},
+            {"$set": {
+                "category": tags[0] if tags else 'miscellaneous',
+                "tags": tags,
+                "confidence_scores": confidence_scores,
+                "classification_method": "rules_based",
+                "classification_status": "completed",
+                "classified_at": datetime.datetime.utcnow()
+            }}
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update document with tags: {e}")
+        return False
+    
 
 # ---------- ROUTES ----------
 @app.route("/upload", methods=["POST"])
@@ -461,6 +579,94 @@ def ocr_text_route(meta_id):
     except Exception as e:
         logger.error(f"OCR translation failed: {traceback.format_exc()}")
         return jsonify({"error": "ocr_translation_failed", "details": str(e)}), 500
+    
+# ---------- Classification Routes ----------
+@app.route("/classify/<meta_id>", methods=["POST"])
+def classify_document(meta_id):
+    """Classify a specific document using rules"""
+    try:
+        # Get document metadata
+        doc = files_col.find_one({"_id": ObjectId(meta_id)})
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Get text content (you'll need to implement GridFS retrieval)
+        # For now, this is a placeholder - implement based on your GridFS setup
+        text = "Implement GridFS text retrieval here"
+        
+        if not text:
+            return jsonify({"error": "Could not retrieve document text"}), 400
+        
+        # Perform classification
+        tags, confidence_scores = classify_by_rules(text)
+        
+        # Update database
+        success = update_document_with_tags(meta_id, tags, confidence_scores)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "meta_id": meta_id,
+                "tags": tags,
+                "confidence_scores": confidence_scores,
+                "classification_method": "rules_based"
+            }), 200
+        else:
+            return jsonify({"error": "Failed to update database"}), 500
+            
+    except Exception as e:
+        return jsonify({"error": f"Classification error: {str(e)}"}), 500
+
+@app.route("/search-by-tag/<tag>", methods=["GET"])
+def search_by_tag(tag):
+    """Search for documents with a specific tag"""
+    try:
+        documents = list(files_col.find({
+            "tags": tag,
+            "classification_status": "completed"
+        }).sort("classified_at", -1))
+        
+        return jsonify({
+            "success": True,
+            "tag": tag,
+            "count": len(documents),
+            "documents": [{
+                "meta_id": str(doc["_id"]),
+                "filename": doc.get("filename", "unknown"),
+                "confidence": doc.get("confidence_scores", {}).get(tag, 0),
+                "classified_at": doc.get("classified_at")
+            } for doc in documents]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/classification-status", methods=["GET"])
+def classification_status():
+    """Get classification statistics"""
+    try:
+        total_files = files_col.count_documents({})
+        classified_files = files_col.count_documents({"classification_status": "completed"})
+        
+        # Get tag distribution
+        pipeline = [
+            {"$match": {"classification_status": "completed"}},
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}}
+        ]
+        tag_stats = list(files_col.aggregate(pipeline))
+        
+        return jsonify({
+            "success": True,
+            "total_files": total_files,
+            "classified_files": classified_files,
+            "completion_rate": (classified_files / total_files * 100) if total_files > 0 else 0,
+            "tag_distribution": {stat["_id"]: stat["count"] for stat in tag_stats}
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
