@@ -1,6 +1,6 @@
 # 📄 KDocAI - Intelligent Document Management System
 
-**🏆 Smart India Hackathon 2024 Project**  
+**🏆 Smart India Hackathon 2025 Project**  
 **🤖 AI-Powered Document Classification & Management**
 
 ---
