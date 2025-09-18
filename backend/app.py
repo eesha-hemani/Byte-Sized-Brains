@@ -30,10 +30,10 @@ app = Flask(
 )
 CORS(app, supports_credentials=True)
 
-@app.route('/', defaults={'path': 'home.html'})
+@app.route('/', defaults={'path': 'index.html'})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    # Send files from the frontend directory; this makes /, /home.html, /index.html work
+    # Send files from the frontend directory; this makes /, /index.html work
     return send_from_directory(FRONTEND_DIR, path)
 
 logging.basicConfig(level=logging.INFO)
@@ -733,6 +733,12 @@ def classification_status_with_meta_id():
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+# ---------- Health Check Route ----------
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Simple health check endpoint"""
+    return jsonify({"status": "healthy", "timestamp": datetime.datetime.utcnow().isoformat()}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

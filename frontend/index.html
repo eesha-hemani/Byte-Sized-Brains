@@ -6,211 +6,177 @@
     <title>Kochi Metro Rail Document Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-    
-   
-    /* Updated color theme */
-    body {
-        background-color: #0B3C46;
-        color: #FFDF00;
-    }
-    
-    /* Header styles */
-    header {
-        background-color: #1A1F24;
-        border-bottom: 1px solid #0B3C46;
-    }
-    
-    header h1, 
-    header .text-gray-600,
-    header .text-gray-400 {
-        color: #FFDF00 !important;
-    }
-    
-    header input {
-        background-color: #1A1F24;
-        border-color: #0B3C46;
-        color: #FFDF00;
-    }
-    
-    header input::placeholder {
-        color: #8B8B66;
-    }
-    
-    /* Sidebar styles */
-    .sidebar {
-        background-color: #1A1F24;
-       
-    }
-    
-    .sidebar a,
-    .sidebar .text-gray-600,
-    .sidebar .text-gray-500 {
-        color: #FFDF00 !important;
-    }
-    
-    .sidebar a:hover {
-        background-color: #0B3C46 !important;
-    }
-    
-    .sidebar .bg-blue-100 {
-        background-color: #0B3C46;
-    }
-    
-    .sidebar .text-blue-700 {
-        color: #FFDF00 !important;
-    }
-    
-    /* Main content styles */
-    .main-content {
-        margin-left: 130px;
-        background-color: #0B3C46;
-    }
-    
-    .main-content .text-gray-800,
-    .main-content .text-gray-600,
-    .main-content .text-gray-900 {
-        color: #FFDF00 !important;
-    }
-    
-    /* Card and table styles */
-    .bg-white {
-        background-color: #1A1F24 !important;
-    }
-    
-    .bg-gray-50 {
-        background-color: #0B3C46 !important;
-    }
-    
-    .bg-blue-100 {
-        background-color: #0B3C46 !important;
-    }
-    
-    .text-gray-500,
-    .text-gray-700 {
-        color: #FFDF00 !important;
-    }
-    
-    /* Upload area */
-    .upload-area {
-        border-color: #2D3843;
-        background-color: #1A1F24;
-    }
-    
-    .upload-area.dragover {
-        border-color: #FFDF00;
-        background-color: #2D3843;
-    }
-    
-    /* Table styles */
-    .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-        border-color: #0B3C46;
-    }
-    
-    .bg-gray-50 {
-        background-color: #0B3C46 !important;
-    }
-    
-    /* Hover effects */
-    .hover\:bg-gray-50:hover {
-        background-color: #2D3843 !important;
-    }
-    
-    /* Department colors */
-    .department-safety {
-        border-left: 4px solid #E53E3E;
-    }
-    
-    .department-finance {
-        border-left: 4px solid #38A169;
-    }
-    
-    .department-engineering {
-        border-left: 4px solid #3182CE;
-    }
-    
-    .department-pr {
-        border-left: 4px solid #D69E2E;
-    }
-    
-    .department-general {
-        border-left: 4px solid #718096;
-    }
-    
-    /* Button styles */
-    button {
-        color: #FFDF00;
-    }
-    
-    #downloadPdf {
-        background-color: #2D3843;
-        border: 1px solid #FFDF00;
-    }
-    
-    #downloadPdf:hover {
-        background-color: #3D4853;
-    }
-    
-    /* SVG icon colors */
-    svg.text-gray-400,
-    svg.text-blue-600,
-    svg.text-red-600 {
-        color: #FFDF00 !important;
-    }
-    
-    /* Loading spinner */
-    .animate-spin {
-        border-color: #FFDF00 transparent #FFDF00 transparent !important;
-    }
-    
-    /* Summary points */
-    .summary-point:before {
-        color: #FFDF00;
-    }
-    
-    /* Keyword tags */
-    .bg-blue-100 {
-        background-color: #2D3843 !important;
-    }
-    
-    .text-blue-800 {
-        color: #FFDF00 !important;
-    }
-
-    
-    /* ... (rest of the CSS code from the previous answer) ... */
-    
-    /* Keep the original media queries and other styles */
-    @media (max-width: 768px) {
+        /* Updated color theme */
+        body {
+            background-color: #0B3C46;
+            color: #FFDF00;
+        }
+        
+        /* Header styles */
+        header {
+            background-color: #1A1F24;
+            border-bottom: 1px solid #0B3C46;
+        }
+        
+        header h1, 
+        header .text-gray-600,
+        header .text-gray-400 {
+            color: #FFDF00 !important;
+        }
+        
+        header input {
+            background-color: #1A1F24;
+            border-color: #0B3C46;
+            color: #FFDF00;
+        }
+        
+        header input::placeholder {
+            color: #8B8B66;
+        }
+        
+        /* Sidebar styles */
         .sidebar {
-            transform: translateX(-100%);
-            position: fixed;
-            z-index: 50;
-            height: 100vh;
+            background-color: #1A1F24;
         }
         
-        .sidebar.active {
-            transform: translateX(0);
+        .sidebar a,
+        .sidebar .text-gray-600,
+        .sidebar .text-gray-500 {
+            color: #FFDF00 !important;
         }
         
+        .sidebar a:hover {
+            background-color: #0B3C46 !important;
+        }
+        
+        .sidebar .bg-blue-50 {
+            background-color: #0B3C46 !important;
+        }
+        
+        .sidebar .text-blue-700 {
+            color: #FFDF00 !important;
+        }
+        
+        /* Main content styles */
         .main-content {
-            width: 100%;
+            background-color: #0B3C46;
         }
-    }
-    
-    .summary-point {
-        margin-bottom: 0.5rem;
-        padding-left: 1rem;
-        position: relative;
-    }
-    
-    .summary-point:before {
-        content: "•";
-        position: absolute;
-        left: 0;
-        color: #FFDF00;
-    }
+        
+        .main-content .text-gray-800,
+        .main-content .text-gray-600,
+        .main-content .text-gray-900 {
+            color: #FFDF00 !important;
+        }
+        
+        /* Card and table styles */
+        .bg-white {
+            background-color: #1A1F24 !important;
+        }
+        
+        .bg-gray-50 {
+            background-color: #0B3C46 !important;
+        }
+        
+        .bg-blue-100 {
+            background-color: #0B3C46 !important;
+        }
+        
+        .text-gray-500,
+        .text-gray-700,
+        .text-gray-600 {
+            color: #FFDF00 !important;
+        }
+        
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed #2D3843;
+            background-color: #1A1F24;
+        }
+        
+        .upload-area.dragover {
+            border-color: #FFDF00;
+            background-color: #2D3843;
+        }
+        
+        /* Table styles */
+        .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #0B3C46;
+        }
+        
+        /* Hover effects */
+        .hover\:bg-gray-50:hover {
+            background-color: #2D3843 !important;
+        }
+        
+        /* Department colors */
+        .department-safety {
+            border-left: 4px solid #E53E3E;
+        }
+        
+        .department-finance {
+            border-left: 4px solid #38A169;
+        }
+        
+        .department-engineering {
+            border-left: 4px solid #3182CE;
+        }
+        
+        .department-urgent {
+            border-left: 4px solid #D69E2E;
+        }
+        
+        .department-general {
+            border-left: 4px solid #718096;
+        }
+        
+        /* Button styles */
+        button {
+            color: #FFDF00;
+        }
+        
+        #downloadPdf {
+            background-color: #2D3843;
+            border: 1px solid #FFDF00;
+        }
+        
+        #downloadPdf:hover {
+            background-color: #3D4853;
+        }
+        
+        /* SVG icon colors */
+        svg.text-gray-400,
+        svg.text-blue-600,
+        svg.text-red-600 {
+            color: #FFDF00 !important;
+        }
 
+        .text-blue-600 {
+             color: #FFDF00 !important;
+        }
+        
+        /* Loading spinner */
+        .animate-spin {
+            border-color: #FFDF00 transparent #FFDF00 transparent !important;
+        }
+        
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            background-color: #2D3843;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background-color: #FFDF00;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
         
         @media (max-width: 768px) {
             .sidebar {
@@ -218,6 +184,8 @@
                 position: fixed;
                 z-index: 50;
                 height: 100vh;
+                width: 256px;
+                transition: transform 0.3s ease-in-out;
             }
             
             .sidebar.active {
@@ -225,28 +193,15 @@
             }
             
             .main-content {
+                margin-left: 0;
                 width: 100%;
             }
         }
-        
-        .summary-point {
-            margin-bottom: 0.5rem;
-            padding-left: 1rem;
-            position: relative;
-        }
-        
-        .summary-point:before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            right: 0;
-            color: #4299e1;
-        }
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen">
     <!-- Top Navigation Bar -->
-    <header class="bg-white shadow-sm">
+    <header class="bg-white shadow-sm flex-shrink-0">
         <div class="flex items-center justify-between px-6 py-3">
             <div class="flex items-center">
                 <button id="menuToggle" class="md:hidden mr-4 text-gray-600">
@@ -261,75 +216,70 @@
             </div>
             <div class="flex items-center">
                 <div class="relative mr-4">
-                    <input type="text" placeholder="Search files..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="text" id="searchInput" placeholder="Search files..." class="pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold">U</div>
+                <a href="/home.html" class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold" title="Go to Home Page">H</a>
             </div>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         <!-- Sidebar -->
-        <aside class="sidebar bg-white shadow-md">
+        <aside class="sidebar bg-white shadow-md w-64 flex-shrink-0">
             <nav class="p-4">
                 <div class="mb-8">
-                    <div id="uploadArea" >
-                    <button class="w-full flex items-center justify-between bg-blue-100 text-blue-700 font-medium py-3 px-4 rounded-lg">
+                    <button id="uploadBtn" class="w-full flex items-center justify-between bg-blue-100 text-blue-700 font-medium py-3 px-4 rounded-lg hover:bg-blue-200 transition-colors">
                         <span>New Upload</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                         </svg>
-                        
-                    <input type="file" id="fileInput" class="hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none"></svg>
-                    </svg>
                     </button>
+                    <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.doc">
                 </div>
                 
                 <ul class="space-y-2">
                     <li class="font-medium text-gray-500 text-xs uppercase tracking-wider pl-2 mb-2">Main</li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-700 bg-blue-50 rounded-lg">
+                        <a href="#" data-category="all" class="category-link flex items-center px-4 py-2 text-gray-700 bg-blue-50 rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
                             </svg>
                             My Drive
                         </a>
                     </li>
-                    
                 </ul>
                 
                 <ul class="mt-8 space-y-2">
                     <li class="font-medium text-gray-500 text-xs uppercase tracking-wider pl-2 mb-2">Departments</li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <a href="#" data-category="safety_reports" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                             <div class="w-3 h-3 rounded-full bg-red-500 mr-3"></div>
                             Safety Reports
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <a href="#" data-category="invoices" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                             <div class="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
                             Invoices
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <a href="#" data-category="engineering_drawings" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                             <div class="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
                             Engineering Drawings
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <a href="#" data-category="urgent" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                             <div class="w-3 h-3 rounded-full bg-yellow-500 mr-3"></div>
                             Urgent
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <a href="#" data-category="miscellaneous" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                             <div class="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
                             Miscellaneous
                         </a>
@@ -339,7 +289,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content overflow-y-auto p-6">
+        <main class="main-content flex-1 overflow-y-auto p-6">
             <div class="mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Welcome to Kochi Metro Document Hub</h2>
                 <p class="text-gray-600">Upload, organize, and manage your documents efficiently</p>
@@ -349,15 +299,20 @@
             <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Upload New File</h3>
                 <div id="uploadArea" class="upload-area rounded-lg p-8 text-center cursor-pointer mb-4">
-                    <input type="file" id="fileInput" class="hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p class="text-gray-600">Drag and drop files here or <span class="text-blue-600 font-medium">browse files</span></p>
-                    <p class="text-sm text-gray-500 mt-2">Supported formats: PDF, DOCX, PPTX, TXT (Max 10MB)</p>
+                    <p class="text-sm text-gray-500 mt-2">Supported formats: PDF, DOCX, TXT (Max 10MB)</p>
+                </div>
+                
+                <!-- Progress bar -->
+                <div class="progress-container" id="progressContainer">
+                    <div class="text-sm text-gray-600 mb-2">Uploading...</div>
+                    <div class="progress-bar" id="progressBar"></div>
                 </div>
 
-                <!-- File Preview and Summary Section (Initially Hidden) -->
+                <!-- File Preview and Summary Section -->
                 <div id="previewSection" class="hidden mt-8">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">File Analysis</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -376,7 +331,7 @@
                                 <!-- Summary content will be inserted here -->
                             </div>
                             <div class="mt-4 flex justify-end">
-                                <button id="downloadPdf" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                                <button id="downloadPdf" class="px-4 py-2 text-white rounded-lg flex items-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
@@ -388,92 +343,26 @@
                 </div>
             </div>
 
-            <!-- Suggested Files Section -->
+            <!-- Files Table Section -->
             <div class="bg-white rounded-xl shadow-sm p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Suggested Files</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800" id="sectionTitle">Recent Files</h3>
+                    <button id="refreshFiles" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                        Refresh
+                    </button>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
                             <tr>
                                 <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason suggested</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr class="department-safety hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">safety_report.pdf</div>
-                                            <div class="text-sm text-gray-500">PDF, 2.4 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Rohan Luckose created • 1:45 PM</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    Rohan Luckose
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    Safety Requirements
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">VID20241103124503.mp4</div>
-                                            <div class="text-sm text-gray-500">MP4, 14.7 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">You opened • 2:32 PM</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    me
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    My Drive
-                                </td>
-                            </tr>
-                            <tr class="department-engineering hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">road-safety-audit-kochi-metro.pdf</div>
-                                            <div class="text-sm text-gray-500">PDF, 5.2 MB</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">You uploaded • 2:34 PM</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    me
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    My Drive
-                                </td>
-                            </tr>
+                        <tbody id="filesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Files will be populated here -->
                         </tbody>
                     </table>
                 </div>
@@ -482,665 +371,357 @@
     </div>
 
     <script>
+        // --- START SCRIPT ---
+
+        // Global variables
+        let currentFiles = [];
+        let currentCategory = 'all';
+
         // DOM Elements
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.querySelector('.sidebar');
         const uploadArea = document.getElementById('uploadArea');
+        const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const previewSection = document.getElementById('previewSection');
         const filePreview = document.getElementById('filePreview');
         const summaryContent = document.getElementById('summaryContent');
         const downloadPdfBtn = document.getElementById('downloadPdf');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const filesTableBody = document.getElementById('filesTableBody');
+        const sectionTitle = document.getElementById('sectionTitle');
+        const refreshFiles = document.getElementById('refreshFiles');
+        const searchInput = document.getElementById('searchInput');
 
-        // Toggle sidebar on mobile
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFiles();
+            setupEventListeners();
         });
 
-        // Upload area functionality
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
+        function setupEventListeners() {
+            // Mobile menu toggle
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
 
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
+            // Upload triggers
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('click', () => fileInput.click());
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            if (e.dataTransfer.files.length) {
-                handleFileUpload(e.dataTransfer.files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleFileUpload(e.target.files[0]);
-            }
-        });
-
-        // Handle file upload and analysis
-        async function apiFetch(path, opts = {}) {
-            opts.headers = opts.headers || {};
-            const token = localStorage.getItem('access_token');
-            if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-            opts.credentials = 'include';
-
-            let res = await fetch(path, opts);
-
-            // try refresh once on 401
-            if (res.status === 401) {
-                try {
-                const r = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
-                if (r.ok) {
-                    const data = await r.json();
-                    localStorage.setItem('access_token', data.access_token);
-                    opts.headers['Authorization'] = 'Bearer ' + data.access_token;
-                    res = await fetch(path, opts);
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleFileUpload(e.target.files[0]);
                 }
-                } catch (e) {
-                // ignore refresh errors
-                console.warn('refresh failed', e);
+            });
+
+            // Drag and drop setup
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            
+            uploadArea.addEventListener('dragover', () => uploadArea.classList.add('dragover'));
+            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+
+            uploadArea.addEventListener('drop', (e) => {
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    handleFileUpload(e.dataTransfer.files[0]);
                 }
-            }
-            return res;
-            }
+            });
 
-            /* -----------------------
-            Upload file to backend: POST /ingest/upload (multipart/form-data)
-            Expects JSON response { success: true, meta_id: "<id>" }
-            ------------------------*/
-            // Replace the uploadToServer function in index.html with this fixed version:
-
-/* -----------------------
-Upload file to backend: POST /upload (multipart/form-data) 
-Note: Backend endpoint is /upload, not /ingest/upload
-------------------------*/
-async function uploadToServer(file, onProgress) {
-    const fd = new FormData();
-    fd.append('file', file, file.name);
-
-    // Get access token for Authorization header
-    const token = localStorage.getItem('access_token');
-
-    return await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/upload', true);  // Fixed: was /ingest/upload
-        xhr.withCredentials = true;
-
-        // Add authorization header if we have a token
-        if (token) {
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-        }
-
-        xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable && typeof onProgress === 'function') {
-                onProgress(Math.round((ev.loaded / ev.total) * 100));
-            }
-        };
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const json = JSON.parse(xhr.responseText);
-                    resolve(json);
-                } catch (e) {
-                    reject(new Error('Invalid JSON response from server'));
-                }
-            } else if (xhr.status === 401) {
-                // Token expired, try to refresh
-                refreshTokenAndRetry();
-            } else {
-                reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}\n${xhr.responseText}`));
-            }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.send(fd);
-
-        // Helper function to refresh token and retry upload
-        async function refreshTokenAndRetry() {
-            try {
-                const res = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    localStorage.setItem('access_token', data.access_token);
+            // Category links
+            document.querySelectorAll('.category-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
                     
-                    // Retry the upload with new token
-                    xhr.setRequestHeader('Authorization', 'Bearer ' + data.access_token);
-                    xhr.send(fd);
-                } else {
-                    reject(new Error('Authentication failed - please log in again'));
-                    // Redirect to login
-                    window.location.href = '/login.html';
-                }
-            } catch (e) {
-                reject(new Error('Authentication failed - please log in again'));
-                window.location.href = '/login.html';
-            }
+                    document.querySelectorAll('.category-link').forEach(l => l.classList.remove('bg-blue-50'));
+                    link.classList.add('bg-blue-50');
+                    
+                    currentCategory = link.dataset.category;
+                    loadFilesByCategory(currentCategory);
+                });
+            });
+
+            // Refresh button
+            refreshFiles.addEventListener('click', () => loadFilesByCategory(currentCategory));
+
+            // Search input
+            searchInput.addEventListener('input', (e) => filterFiles(e.target.value));
         }
-    });
-}
 
-// Also add this authentication check at the top of the index.html script:
-/* ---- Check authentication on page load ---- */
-document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-        // No token, redirect to login
-        window.location.href = '/login.html';
-        return;
-    }
+        // --- FILE HANDLING ---
 
-    // Verify token is valid by calling a protected endpoint
-    try {
-        const res = await apiFetch('/files');
-        if (!res.ok) {
-            throw new Error('Token invalid');
-        }
-        
-        // Token is valid, load files if needed
-        // You can add code here to populate the suggested files table
-        
-    } catch (e) {
-        // Token invalid, redirect to login
-        localStorage.removeItem('access_token');
-        window.location.href = '/login.html';
-    }
-});
-
-            /* -----------------------
-            Main file handler: upload -> trigger classify -> poll status -> display result
-            ------------------------*/
-            async function handleFileUpload(file) {
+        async function handleFileUpload(file) {
             if (!file) return;
 
-            // show preview loading
-            filePreview.innerHTML = `
-                <div class="flex items-center justify-center h-full">
-                    <div class="text-center">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p class="mt-4 text-gray-600">Preparing file for upload...</p>
-                    </div>
-                </div>
-            `;
-            summaryContent.innerHTML = `
-                <div class="flex items-center justify-center h-full">
-                    <div class="text-center">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p class="mt-4 text-gray-600">Uploading and analyzing document...</p>
-                    </div>
-                </div>
-            `;
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
             previewSection.classList.remove('hidden');
-            previewSection.scrollIntoView({ behavior: 'smooth' });
-
-            // wire progress UI if sidebar/file upload also tries to show it
-            const progressBarContainer = document.getElementById('progress');
-            const progressBar = document.getElementById('bar');
-            if (progressBarContainer) progressBarContainer.style.display = 'block';
-            if (progressBar) progressBar.style.width = '0%';
+            filePreview.innerHTML = getLoadingSpinner('Preparing file...');
+            summaryContent.innerHTML = getLoadingSpinner('Analyzing document...');
 
             try {
-                // Upload
-                const uploadResp = await uploadToServer(file, (pct) => {
-                if (progressBar) progressBar.style.width = pct + '%';
-                });
-
-                if (!uploadResp || !uploadResp.meta_id) {
-                // no meta_id returned — fallback to simulation
-                console.warn('upload returned no meta_id, falling back to local analysis', uploadResp);
-                if (progressBarContainer) progressBarContainer.style.display = 'none';
-                simulateAnalysis(file); // use your existing simulated analysis UI
-                return;
-                }
-
-                const metaId = uploadResp.meta_id;
-
-                // immediately try to trigger reprocess / classify using server endpoints
-                // call server-side reprocess/classify endpoints (they may already be triggered by upload route)
-                await Promise.allSettled([
-                apiFetch('/reprocess/' + encodeURIComponent(metaId), { method: 'POST' }),
-                apiFetch('/classify/' + encodeURIComponent(metaId), { method: 'POST' })
-                ]);
-
-                if (progressBarContainer) progressBarContainer.style.display = 'none';
-
-                // poll for classification status & result
-                await pollStatus(metaId, file);
-
-            } catch (err) {
-                console.error('Upload/analysis error', err);
-                if (document.getElementById('uploadStatus')) {
-                document.getElementById('uploadStatus').style.display = 'block';
-                document.getElementById('uploadStatus').textContent = 'Upload failed: ' + err.message;
-                } else {
-                alert('Upload failed: ' + err.message);
-                }
-                // fall back to simulation so user sees something
-                simulateAnalysis(file);
+                const result = await uploadFileToServer(file);
+                progressContainer.style.display = 'none';
+                displayUploadResults(file, result);
+                loadFilesByCategory(currentCategory);
+            } catch (error) {
+                progressContainer.style.display = 'none';
+                showError('Upload failed: ' + error.message);
+                console.error('Upload error:', error);
             }
-            }
+        }
 
-            /* -----------------------
-            Poll /classification-status?meta_id=<id> every 2.5s until done
-            Expected server JSON (example):
-            {
-                success: true,
-                status: "processing" | "done" | "failed",
-                tags: ["safety","audit"],
-                primary_tag: "safety",
-                summary_points: [...],          // optional, recommended
-                detailed_summary: "....",      // optional
-                assigned_department: "Safety Department",
-                extracted_text: "...",         // optional
-                other: { ... }
-            }
-            ------------------------*/
-            async function pollStatus(metaId, originalFile) {
-            const output = document.getElementById('segResult');
-            output.textContent = 'Polling status...';
+        function uploadFileToServer(file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('uploaded_by', 'user');
 
-            const poll = async () => {
-                try {
-                const res = await apiFetch('/classification-status?meta_id=' + encodeURIComponent(metaId), { method: 'GET' });
-                if (!res.ok) {
-                    // server returned error: show and stop polling
-                    const txt = await res.text().catch(() => '');
-                    output.textContent = `Status fetch error: ${res.status} ${txt}`;
-                    clearInterval(pollInterval);
-                    return;
-                }
-                const json = await res.json().catch(() => ({}));
-                const status = json.status || (json.success ? 'done' : 'processing');
-                // Display some summary in segResult
-                output.textContent = `Status: ${status}\n\n` + JSON.stringify(json, null, 2);
-
-                if (status === 'done') {
-                    clearInterval(pollInterval);
-                    // render real analysis if present, else fallback to simulateAnalysis
-                    if (json.summary_points || json.detailed_summary || json.assigned_department || json.tags) {
-                    renderAnalysisFromBackend(originalFile, json);
-                    } else {
-                    // no analysis fields: fallback to simulateAnalysis (but show that actual backend finished)
-                    simulateAnalysis(originalFile, { note: 'Backend processed file but returned no analysis fields.' });
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        progressBar.style.width = ((e.loaded / e.total) * 100) + '%';
                     }
-                } else if (status === 'failed' || status === 'error') {
-                    clearInterval(pollInterval);
-                    output.textContent = 'Processing failed for meta_id: ' + metaId + '\n\n' + JSON.stringify(json, null, 2);
-                    // fallback
-                    simulateAnalysis(originalFile, { note: 'Backend reported failure. Using local simulated analysis.' });
-                }
-                // else keep polling
-                } catch (err) {
-                console.error('poll error', err);
-                clearInterval(pollInterval);
-                output.textContent = 'Poll error: ' + err.message;
-                simulateAnalysis(originalFile, { note: 'Polling failed, showing simulated analysis.' });
-                }
-            };
-
-            // run immediately and then every 2.5s
-            await poll();
-            var pollInterval = setInterval(poll, 2500);
-            }
-
-            /* -----------------------
-            Render analysis returned by backend into the UI
-            ------------------------*/
-            function renderAnalysisFromBackend(file, json) {
-            // build safe fallback fields
-            const summaryPoints = json.summary_points || (json.key_points || []);
-            const detailedSummary = json.detailed_summary || json.excerpt || '';
-            const department = json.assigned_department || json.primary_tag || 'General';
-            const keywords = json.tags || [];
-
-            // Update file preview (reuse existing preview logic for type)
-            if (file.type === 'application/pdf') {
-                filePreview.innerHTML = `
-                <div class="text-center py-8">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
-                    <p class="text-gray-600">PDF Document</p>
-                    <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-                `;
-            } else if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                filePreview.innerHTML = `
-                    <div class="text-center">
-                    <img src="${e.target.result}" alt="${file.name}" class="max-h-52 mx-auto rounded-lg">
-                    <h3 class="font-semibold text-lg text-gray-800 mt-4">${file.name}</h3>
-                    <p class="text-gray-600">Image File</p>
-                    </div>
-                `;
                 };
-                reader.readAsDataURL(file);
-            } else {
-                filePreview.innerHTML = `
-                <div class="text-center py-8">
-                    <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
-                    <p class="text-gray-600">Document</p>
-                    <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-                `;
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            resolve(JSON.parse(xhr.responseText));
+                        } catch (e) {
+                            reject(new Error('Invalid response from server'));
+                        }
+                    } else {
+                        reject(new Error(`Server error: ${xhr.statusText}`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error during upload.'));
+                xhr.open('POST', '/upload', true);
+                xhr.send(formData);
+            });
+        }
+        
+        async function reprocessFile(metaId) {
+            // Removed confirmation dialog
+            try {
+                const response = await fetch(`/reprocess/${metaId}`, { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('File reprocessing started');
+                    setTimeout(() => loadFilesByCategory(currentCategory), 2000);
+                } else {
+                    throw new Error('Reprocess request failed');
+                }
+            } catch (error) {
+                showError('Failed to reprocess file: ' + error.message);
+            }
+        }
+
+        // --- DATA FETCHING & DISPLAY ---
+
+        async function loadFilesByCategory(category) {
+            try {
+                const url = (category === 'all') ? '/files' : `/search-by-tag/${category}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load files');
+                
+                const data = await response.json();
+                currentFiles = Array.isArray(data) ? data : (data.documents || []);
+                
+                updateSectionTitle(category);
+                displayFiles(currentFiles);
+            } catch (error) {
+                console.error('Failed to load files:', error);
+                showError('Failed to load files: ' + error.message);
+            }
+        }
+
+        async function loadFiles() {
+            await loadFilesByCategory('all');
+        }
+
+        function displayFiles(files) {
+            if (!files || files.length === 0) {
+                filesTableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">No documents found</td></tr>`;
+                return;
             }
 
-            // Render summary
+            filesTableBody.innerHTML = files.map(file => {
+                const category = file.category || file.tags?.[0] || 'miscellaneous';
+                return `
+                    <tr class="${getDepartmentClass(category)} hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                ${getFileIcon(file.filename)}
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium">${file.filename || 'Unknown'}</div>
+                                    <div class="text-sm text-gray-500">${file.content_type || 'Unknown type'}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full ${getCategoryColor(category)}">${category.replace(/_/g, ' ')}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            ${file.meta_id ? `
+                                <a href="/download/${file.meta_id}" class="text-blue-600 hover:text-blue-900 mr-3">Download</a>
+                                <button onclick="reprocessFile('${file.meta_id}')" class="text-green-600 hover:text-green-900">Reprocess</button>
+                            ` : 'No actions'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterFiles(searchTerm) {
+            const term = searchTerm.toLowerCase();
+            if (!term) {
+                displayFiles(currentFiles);
+                return;
+            }
+            const filtered = currentFiles.filter(file => 
+                file.filename?.toLowerCase().includes(term) ||
+                file.category?.toLowerCase().includes(term)
+            );
+            displayFiles(filtered);
+        }
+
+        // --- UI & CONTENT GENERATION ---
+
+        function displayUploadResults(file, result) {
+            displayFilePreview(file);
+            displayAnalysisResults(result);
+            setupPdfDownload(file, result);
+        }
+
+        function displayFilePreview(file) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            const fileType = file.type || 'unknown';
+            let icon = 'fa-file', colorClass = 'bg-gray-100 text-gray-600';
+            if (fileType.includes('pdf')) { icon = 'fa-file-pdf'; colorClass = 'bg-red-100 text-red-600'; }
+            else if (fileType.includes('word')) { icon = 'fa-file-word'; colorClass = 'bg-blue-100 text-blue-600'; }
+            else if (fileType.includes('text')) { icon = 'fa-file-alt'; colorClass = 'bg-yellow-100 text-yellow-600'; }
+
+            filePreview.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="w-16 h-16 ${colorClass} rounded-lg flex items-center justify-center mx-auto mb-4"><i class="fas ${icon} text-2xl"></i></div>
+                    <h3 class="font-semibold text-lg">${file.name}</h3>
+                    <p class="text-gray-600">${fileSize} MB</p>
+                    <p class="text-sm text-gray-500 mt-2">Upload successful!</p>
+                </div>`;
+        }
+        
+        function displayAnalysisResults(result) {
+            const tags = result.tags || [];
+            const primaryTag = result.primary_tag || 'miscellaneous';
             summaryContent.innerHTML = `
                 <div>
-                <h4 class="font-semibold text-gray-800 mb-2">Key Points</h4>
-                <div class="text-sm text-gray-600 mb-4">
-                    ${Array.isArray(summaryPoints) && summaryPoints.length ? summaryPoints.map(p => `<div class="summary-point">${p}</div>`).join('') : '<div class="summary-point">No summary provided by backend.</div>'}
-                </div>
+                    <h4 class="font-semibold mb-2">Processing Results</h4>
+                    <p class="text-sm text-gray-600 mb-2">Status: <span class="text-green-600 font-medium">✓ Processed</span></p>
+                    ${result.translated ? `<p class="text-sm text-gray-600 mb-2">Translation: <span class="text-blue-600 font-medium">✓ Translated from Malayalam</span></p>` : ''}
+                    <p class="text-sm text-gray-600 mb-2">Language: <span class="font-medium">${result.language || 'unknown'}</span></p>
+                    <h4 class="font-semibold mt-4 mb-2">Categories</h4>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${tags.length ? tags.map(tag => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag.replace(/_/g, ' ')}</span>`).join('') : '<span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">miscellaneous</span>'}
+                    </div>
+                    <h4 class="font-semibold mt-4 mb-2">Department Assignment</h4>
+                    <p class="text-gray-600">${getDepartmentName(primaryTag)}</p>
+                </div>`;
+        }
 
-                <h4 class="font-semibold text-gray-800 mb-2">Keywords</h4>
-                <div class="flex flex-wrap gap-2 mb-4">
-                    ${Array.isArray(keywords) && keywords.length ? keywords.map(k => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${k}</span>`).join('') : '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">none</span>'}
-                </div>
+        function setupPdfDownload(file, result) {
+            downloadPdfBtn.onclick = () => generatePDFReport(file, result);
+        }
 
-                <h4 class="font-semibold text-gray-800 mb-2">Assigned Department</h4>
-                <p class="text-gray-600">${department}</p>
-                </div>
-            `;
+        function generatePDFReport(file, result) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
 
-            // hook pdf download to use the returned details
-            setupPdfDownload(file.name, summaryPoints, detailedSummary, department, keywords);
-            }
+            // Header
+            doc.setFillColor(11, 60, 70);
+            doc.rect(0, 0, 220, 30, 'F');
+            doc.setFontSize(18); doc.setTextColor(255, 223, 0); doc.text('Kochi Metro Rail', 105, 18, { align: 'center' });
+            doc.setFontSize(12); doc.setTextColor(255, 255, 255); doc.text('Document Analysis Report', 105, 26, { align: 'center' });
 
-            /* -----------------------
-            If backend missing analysis fields, keep your original simulateAnalysis as fallback.
-            We'll keep signature simulateAnalysis(file, extras)
-            ------------------------*/
-            function simulateAnalysis(file, extras = {}) {
-            // copy / reuse your existing simulation logic (shortened here for brevity)
-            // The original simulation built department, keywords, summaryPoints, detailedSummary.
-            // For clarity: you can keep the full function from your current file here.
-            // For now, fallback to a minimal local simulation:
+            // Document info
+            doc.setFontSize(11); doc.setTextColor(0, 0, 0); doc.text(`File: ${file.name}`, 14, 48);
+            doc.setFontSize(10); doc.setTextColor(80, 80, 80); doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 54);
 
-            let department = "General Administration";
-            let keywords = ["general"];
-            let summaryPoints = ["No backend analysis available — showing simulated summary."];
-            let detailedSummary = "Simulated detailed summary. " + (extras.note || "");
+            // Analysis Results
+            doc.setFontSize(14); doc.setTextColor(11, 60, 70); doc.text('Analysis Results', 14, 70); doc.line(14, 72, 80, 72);
 
-            // simple heuristics from filename (replicating your earlier logic)
-            const name = file.name.toLowerCase();
-            if (name.includes('safety')) {
-                department = "Safety Department";
-                keywords = ["safety","audit"];
-                summaryPoints = ["Safety audit — simulated: immediate attention required."];
-                detailedSummary = "Simulated safety detailed summary.";
-            } else if (name.includes('financial') || name.includes('budget')) {
-                department = "Finance Department";
-                keywords = ["finance","budget"];
-                summaryPoints = ["Financial summary — simulated: revenue above projections."];
-                detailedSummary = "Simulated finance detailed summary.";
-            }
+            let yPos = 80;
+            doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+            const tags = result.tags || [];
+            const primaryTag = result.primary_tag || 'miscellaneous';
+            
+            doc.text(`Primary Category: ${primaryTag.replace(/_/g, ' ')}`, 14, yPos); yPos += 7;
+            doc.text(`Department: ${getDepartmentName(primaryTag)}`, 14, yPos); yPos += 7;
+            doc.text(`Language: ${result.language || 'Unknown'}`, 14, yPos); yPos += 7;
+            if (result.translated) { doc.text('Translation: Translated from Malayalam', 14, yPos); yPos += 7; }
+            if (tags.length) { doc.text(`Tags: ${tags.join(', ')}`, 14, yPos); }
 
-            // render UI same as real backend
-            renderAnalysisFromBackend(file, {
-                summary_points: summaryPoints,
-                detailed_summary: detailedSummary,
-                assigned_department: department,
-                tags: keywords
-            });
-            }
+            // Footer
+            const pageH = doc.internal.pageSize.height;
+            doc.setFontSize(9); doc.setTextColor(100, 100, 100); doc.text('Kochi Metro Rail Limited - Document Management System', 105, pageH - 10, { align: 'center' });
+            doc.save(`KM_Report_${file.name.replace(/\.[^/.]+$/, "")}.pdf`);
+        }
+        
+        // --- UTILITY FUNCTIONS ---
 
-            /* -----------------------
-            PDF download re-used from your existing implementation but uses passed values
-            ------------------------*/
-            function setupPdfDownload(filename, summaryPoints, detailedSummary, department, keywords) {
-            downloadPdfBtn.onclick = () => {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+        function updateSectionTitle(category) {
+            const titles = { 'all': 'All Documents', 'safety_reports': 'Safety Reports', 'invoices': 'Invoices', 'engineering_drawings': 'Engineering Drawings', 'urgent': 'Urgent Documents', 'miscellaneous': 'Miscellaneous' };
+            sectionTitle.textContent = titles[category] || 'Documents';
+        }
 
-                // Header
-                doc.setFillColor(11, 60, 70);
-                doc.rect(0, 0, 220, 30, 'F');
-                doc.setFontSize(18);
-                doc.setTextColor(255, 223, 0);
-                doc.text('Kochi Metro Rail', 105, 18, { align: 'center' });
-                doc.setFontSize(12);
-                doc.setTextColor(255, 255, 255);
-                doc.text('Document Analysis Report', 105, 26, { align: 'center' });
+        function getDepartmentClass(category) {
+            const map = { 'safety_reports': 'department-safety', 'invoices': 'department-finance', 'engineering_drawings': 'department-engineering', 'urgent': 'department-urgent' };
+            return map[category] || 'department-general';
+        }
 
-                // Document info
-                doc.setFontSize(11);
-                doc.setTextColor(0, 0, 0);
-                doc.text(`File: ${filename}`, 14, 48);
-                doc.setFontSize(10);
-                doc.setTextColor(80, 80, 80);
-                doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 54);
-
-                // Executive Summary
-                doc.setFontSize(14);
-                doc.setTextColor(11, 60, 70);
-                doc.text('Executive Summary', 14, 70);
-                doc.setDrawColor(11, 60, 70);
-                doc.line(14, 72, 80, 72);
-
-                doc.setFontSize(11);
-                doc.setTextColor(0, 0, 0);
-                let yPos = 80;
-                if (Array.isArray(summaryPoints)) {
-                summaryPoints.forEach(pt => {
-                    if (yPos > 250) { doc.addPage(); yPos = 20; }
-                    doc.text('• ' + pt, 16, yPos);
-                    yPos += 7;
-                });
-                } else if (typeof summaryPoints === 'string') {
-                const lines = doc.splitTextToSize(summaryPoints, 180);
-                doc.text(lines, 14, yPos);
-                yPos += lines.length * 7;
-                }
-
-                // Detailed Analysis
-                if (yPos > 220) { doc.addPage(); yPos = 20; } else { yPos += 10; }
-                doc.setFontSize(14);
-                doc.setTextColor(11, 60, 70);
-                doc.text('Detailed Analysis', 14, yPos);
-                doc.line(14, yPos + 2, 80, yPos + 2);
-                doc.setFontSize(11);
-                doc.setTextColor(0, 0, 0);
-                yPos += 10;
-                const splitText = doc.splitTextToSize(detailedSummary || '', 180);
-                doc.text(splitText, 14, yPos);
-
-                // Metadata
-                const pageH = doc.internal.pageSize.height;
-                doc.setFontSize(12);
-                doc.setTextColor(11, 60, 70);
-                doc.text('Metadata', 14, pageH - 60);
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0);
-                doc.text(`Assigned Department: ${department}`, 14, pageH - 50);
-                doc.text(`Keywords: ${Array.isArray(keywords) ? keywords.join(', ') : keywords}`, 14, pageH - 43);
-
-                // Footer
-                doc.setFontSize(9);
-                doc.setTextColor(100, 100, 100);
-                doc.text('Kochi Metro Rail Limited - Document Management System', 105, pageH - 10, { align: 'center' });
-
-                doc.save(`KM_Report_${filename.replace(/\.[^/.]+$/, "")}.pdf`);
+        function getFileIcon(filename) {
+            const ext = filename?.split('.').pop().toLowerCase() || '';
+            const iconMap = {
+                'pdf': `<div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6l-4-4H4v16zm8-14v4h4l-4-4z"/></svg></div>`,
+                'doc': `<div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6l-4-4H4v16zm8-14v4h4l-4-4z"/></svg></div>`,
+                'txt': `<div class="flex-shrink-0 h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6l-4-4H4v16zm8-14v4h4l-4-4z"/></svg></div>`,
             };
-            }
-            document.addEventListener('DOMContentLoaded', () => {
-    // Add click handlers to sidebar category links
-    const categoryLinks = document.querySelectorAll('.sidebar a[href="#"]');
-    
-    categoryLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            
-            // Remove active state from all links
-            categoryLinks.forEach(l => {
-                l.classList.remove('bg-blue-50');
-                l.querySelector('div')?.classList.remove('bg-blue-500');
-            });
-            
-            // Add active state to clicked link
-            link.classList.add('bg-blue-50');
-            const colorDiv = link.querySelector('div');
-            if (colorDiv) {
-                colorDiv.classList.add('bg-blue-500');
-            }
-            
-            // Get category from link text
-            const categoryText = link.textContent.trim();
-            let filterTag = '';
-            
-            switch (categoryText) {
-                case 'Safety Reports':
-                    filterTag = 'safety_reports';
-                    break;
-                case 'Invoices':
-                    filterTag = 'invoices';
-                    break;
-                case 'Engineering Drawings':
-                    filterTag = 'engineering_drawings';
-                    break;
-                case 'Urgent':
-                    filterTag = 'urgent';
-                    break;
-                case 'Miscellaneous':
-                    filterTag = 'miscellaneous';
-                    break;
-                case 'My Drive':
-                default:
-                    filterTag = 'all';
-                    break;
-            }
-            
-            // Load files for this category
-            loadFilesByCategory(filterTag);
-        });
-    });
-});
+            iconMap['docx'] = iconMap['doc'];
+            return iconMap[ext] || `<div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6l-4-4H4v16zm8-14v4h4l-4-4z"/></svg></div>`;
+        }
 
-/* ---- Load files by category ---- */
-async function loadFilesByCategory(category) {
-    try {
-        let url = '/files';
-        if (category !== 'all') {
-            url = `/search-by-tag/${category}`;
+        function getCategoryColor(category) {
+            const map = { 'safety_reports': 'bg-red-100 text-red-800', 'invoices': 'bg-green-100 text-green-800', 'engineering_drawings': 'bg-blue-100 text-blue-800', 'urgent': 'bg-yellow-100 text-yellow-800' };
+            return map[category] || 'bg-gray-100 text-gray-800';
         }
-        
-        const res = await apiFetch(url);
-        if (!res.ok) {
-            throw new Error('Failed to load files');
-        }
-        
-        const data = await res.json();
-        
-        // Update the suggested files table
-        updateFilesTable(data, category);
-        
-        // Update header to show what's being viewed
-        const header = document.querySelector('main h2');
-        if (header) {
-            const categoryName = category === 'all' ? 'All Documents' : 
-                               category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            header.textContent = `${categoryName}`;
-        }
-        
-    } catch (err) {
-        console.error('Failed to load category files:', err);
-        alert('Failed to load files: ' + err.message);
-    }
-}
 
-/* ---- Update files table with new data ---- */
-function updateFilesTable(data, category) {
-    const tbody = document.querySelector('tbody');
-    if (!tbody) return;
-    
-    // Handle different response formats
-    let files = [];
-    if (Array.isArray(data)) {
-        files = data;  // Direct array from /files
-    } else if (data.documents && Array.isArray(data.documents)) {
-        files = data.documents;  // From /search-by-tag
-    }
-    
-    if (files.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                    No documents found in this category
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = files.map(file => {
-        const fileExtension = file.filename ? file.filename.split('.').pop().toLowerCase() : 'unknown';
-        const fileSize = file.size ? (file.size / 1024 / 1024).toFixed(1) + ' MB' : 'Unknown size';
-        
-        // Determine icon and color based on file type
-        let iconClass = 'fa-file';
-        let colorClass = 'bg-gray-100 text-gray-600';
-        
-        if (fileExtension === 'pdf') {
-            iconClass = 'fa-file-pdf';
-            colorClass = 'bg-red-100 text-red-600';
-        } else if (['doc', 'docx'].includes(fileExtension)) {
-            iconClass = 'fa-file-word';
-            colorClass = 'bg-blue-100 text-blue-600';
-        } else if (['xls', 'xlsx'].includes(fileExtension)) {
-            iconClass = 'fa-file-excel';
-            colorClass = 'bg-green-100 text-green-600';
-        } else if (fileExtension === 'txt') {
-            iconClass = 'fa-file-text';
-            colorClass = 'bg-yellow-100 text-yellow-600';
+        function getDepartmentName(tag) {
+            const map = { 'invoices': 'Finance Department', 'safety_reports': 'Safety Department', 'urgent': 'Priority Management Office', 'engineering_drawings': 'Engineering Department' };
+            return map[tag] || 'General Administration';
         }
-        
-        // Determine department color bar
-        let deptClass = 'department-general';
-        const tag = file.tags?.[0] || file.category || 'miscellaneous';
-        if (tag === 'safety_reports') deptClass = 'department-safety';
-        else if (tag === 'invoices') deptClass = 'department-finance';
-        else if (tag === 'engineering_drawings') deptClass = 'department-engineering';
-        else if (tag === 'urgent') deptClass = 'department-pr';
-        
-        return `
-            <tr class="${deptClass} hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0 h-10 w-10 ${colorClass} rounded-lg flex items-center justify-center">
-                            <i class="fas ${iconClass} h-6 w-6"></i>
-                        </div>
-                        <div class="ml-4">
-                            <div class="text-sm font-medium text-gray-900">${file.filename || 'Unknown'}</div>
-                            <div class="text-sm text-gray-500">${fileExtension.toUpperCase()}, ${fileSize}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">
-                        ${file.uploaded_at ? 'Uploaded • ' + new Date(file.uploaded_at).toLocaleTimeString() : 'Unknown time'}
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${file.uploaded_by || 'Unknown'}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${tag.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    ${file.meta_id ? `<br><a href="/download/${file.meta_id}" class="text-blue-600 hover:text-blue-800">Download</a>` : ''}
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+
+        function getLoadingSpinner(message) {
+            return `<div class="flex items-center justify-center h-full"><div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"></div><p class="mt-4 text-gray-600">${message}</p></div></div>`;
+        }
+
+        function showError(message) { console.error('Error: ' + message); }
+        function showSuccess(message) { console.log('Success: ' + message); }
+
+        // Make reprocessFile globally accessible from the table rows
+        window.reprocessFile = reprocessFile;
+
+        // --- END SCRIPT ---
     </script>
 </body>
 </html>
