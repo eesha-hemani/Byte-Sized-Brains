@@ -9,6 +9,12 @@ from docx import Document as DocxDocument
 from langdetect import detect, DetectorFactory, LangDetectException
 from googletrans import Translator as GTranslator
 from flask_cors import CORS
+import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Make langdetect deterministic
 DetectorFactory.seed = 0
@@ -16,12 +22,19 @@ DetectorFactory.seed = 0
 # ---------- CONFIG ----------
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("MONGO_DB", "kmrl_docs")
-USE_GCLOUD = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        logging.error(f"Failed to configure Gemini API: {e}")
+        GEMINI_API_KEY = None # Disable if configuration fails
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+# Correctly point to the 'frontend' directory which is a sibling of the 'backend' directory.
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 
-# Serve frontend files (home.html, index.html, etc.) from the frontend folder
 app = Flask(
     __name__,
     static_folder=FRONTEND_DIR,
@@ -30,40 +43,36 @@ app = Flask(
 )
 CORS(app, supports_credentials=True)
 
-@app.route('/', defaults={'path': 'index.html'})
-@app.route('/<path:path>')
-def serve_frontend(path):
-    # Send files from the frontend directory; this makes /, /index.html work
-    return send_from_directory(FRONTEND_DIR, path)
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------- Connect to MongoDB & GridFS ----------
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
-fs = gridfs.GridFS(db)
-files_col = db["files"]  # metadata
+try:
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    fs = gridfs.GridFS(db)
+    files_col = db["files"]
+    logger.info("Successfully connected to MongoDB.")
+except Exception as e:
+    logger.error(f"Could not connect to MongoDB: {e}")
+    exit(1)
 
-# ---------- Translators ----------
-gtranslator = GTranslator()
-gcloud_client = None
-if USE_GCLOUD:
-    try:
-        from google.cloud import translate_v2 as gcloud_translate
-        gcloud_client = gcloud_translate.Client()
-        logger.info("Google Cloud Translate enabled.")
-    except Exception as e:
-        gcloud_client = None
-        logger.warning(f"Could not init Google Cloud Translate: {str(e)}; will use googletrans fallback.")
+
+@app.route('/', defaults={'path': 'home.html'})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    # Check if the requested path exists in the frontend directory
+    if not os.path.exists(os.path.join(FRONTEND_DIR, path)):
+        # If not, return a 404 error
+        return jsonify({"error": "not_found"}), 404
+    return send_from_directory(FRONTEND_DIR, path)
 
 # ---------- Helpers ----------
 def oid_to_str(o):
     return str(o) if o is not None else None
 
 def save_file_to_gridfs(file_bytes, filename, content_type):
-    grid_id = fs.put(file_bytes, filename=filename, contentType=content_type)
-    return grid_id
+    return fs.put(file_bytes, filename=filename, contentType=content_type)
 
 def insert_metadata(filename, gridfs_id, content_type, uploaded_by, source_type="upload", source_url=None, parent_id=None, language=None, translation_status=None):
     doc = {
@@ -78,429 +87,192 @@ def insert_metadata(filename, gridfs_id, content_type, uploaded_by, source_type=
         "language": language,
         "translation_status": translation_status
     }
-    res = files_col.insert_one(doc)
-    return res.inserted_id
-
-def get_metadata(meta_id):
-    return files_col.find_one({"_id": ObjectId(meta_id)})
+    return files_col.insert_one(doc).inserted_id
 
 def update_metadata(meta_id, patch: dict):
     files_col.update_one({"_id": ObjectId(meta_id)}, {"$set": patch})
 
-def get_department_from_tag(tag):
-    """Map classification tags to department names"""
-    department_mapping = {
-        'invoices': 'Finance Department',
-        'safety_reports': 'Safety Department', 
-        'urgent': 'Priority Management Office',
-        'engineering_drawings': 'Engineering Department',
-        'miscellaneous': 'General Administration'
-    }
-    return department_mapping.get(tag, 'General Administration')
-
-# ---------- Download helper (Google Drive and SharePoint) ----------
-def download_url_to_bytes(url, timeout=30):
-    # Google Drive handling
-    gd = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
-    if not gd:
-        gd = re.search(r"[?&]id=([a-zA-Z0-9_-]+)", url)
-    if gd:
-        fid = gd.group(1)
-        dl = f"https://drive.google.com/uc?export=download&id={fid}"
-        r = requests.get(dl, timeout=timeout)
-        if r.status_code == 200:
-            filename = f"drive_{fid}"
-            return r.content, filename, r.headers.get("content-type", "application/octet-stream")
-        else:
-            raise Exception(f"Drive download failed: {r.status_code}")
-    
-    # SharePoint handling (simplified - may need adjustments for your SharePoint setup)
-    if "sharepoint.com" in url:
-        # For SharePoint, we need to handle authentication
-        # This is a basic implementation - you may need to adjust based on your auth method
-        headers = {}
-        # Add authentication headers if needed (e.g., Bearer token)
-        # headers['Authorization'] = f'Bearer {sharepoint_token}'
-        
-        r = requests.get(url, headers=headers, timeout=timeout)
-        if r.status_code != 200:
-            raise Exception(f"SharePoint download failed: {r.status_code}")
-        
-        # Try to get filename from Content-Disposition header
-        content_disposition = r.headers.get('Content-Disposition', '')
-        filename_match = re.search(r'filename="([^"]+)"', content_disposition)
-        if filename_match:
-            filename = filename_match.group(1)
-        else:
-            filename = url.split("/")[-1].split("?")[0] or "sharepoint_download.bin"
-            
-        return r.content, filename, r.headers.get("content-type", "application/octet-stream")
-    
-    # Generic URL handling
-    r = requests.get(url, timeout=timeout)
-    if r.status_code != 200:
-        raise Exception(f"Download failed: {r.status_code}")
-    
-    # Try to get filename from Content-Disposition header
-    content_disposition = r.headers.get('Content-Disposition', '')
-    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
-    if filename_match:
-        filename = filename_match.group(1)
-    else:
-        filename = url.split("/")[-1].split("?")[0] or "downloaded.bin"
-    
-    return r.content, filename, r.headers.get("content-type", "application/octet-stream")
-
-# ---------- Extract digital text ONLY (no OCR) ----------
 def extract_text_if_digital(file_bytes, filename, filetype_hint=None):
     ext = os.path.splitext(filename.lower())[1]
-    tf = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    text = ""
     try:
-        tf.write(file_bytes)
-        tf.flush()
-        tf.close()
-        
-        text = ""
         if ext == ".pdf" or (filetype_hint and "pdf" in filetype_hint):
-            try:
-                with pdfplumber.open(tf.name) as pdf:
-                    for p in pdf.pages:
-                        t = p.extract_text()
-                        if t: 
-                            text += t + "\n"
-            except Exception as e:
-                logger.warning(f"PDF extraction failed: {str(e)}")
-                text = ""
-        elif ext == ".docx" or (filetype_hint and "word" in (filetype_hint or "")):
-            try:
-                doc = DocxDocument(tf.name)
-                paras = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
-                text = "\n".join(paras)
-            except Exception as e:
-                logger.warning(f"DOCX extraction failed: {str(e)}")
-                text = ""
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                text = "\n".join(p.extract_text() for p in pdf.pages if p.extract_text())
+        elif ext == ".docx" or (filetype_hint and "word" in filetype_hint):
+            doc = DocxDocument(io.BytesIO(file_bytes))
+            text = "\n".join(p.text for p in doc.paragraphs if p.text and p.text.strip())
         elif ext in [".txt", ".text"]:
-            try:
-                text = file_bytes.decode("utf-8", errors="ignore")
-            except Exception as e:
-                logger.warning(f"TXT extraction failed: {str(e)}")
-                text = ""
-        else:
-            # Try PDF as fallback for unknown file types
-            try:
-                with pdfplumber.open(tf.name) as pdf:
-                    for p in pdf.pages:
-                        t = p.extract_text()
-                        if t: 
-                            text += t + "\n"
-            except Exception:
-                text = ""
+            text = file_bytes.decode("utf-8", errors="ignore")
+    except Exception as e:
+        logger.warning(f"Text extraction failed for {filename}: {str(e)}")
+        return "", None
         
-        text = text.strip()
-        lang = None
-        if text:
-            try:
-                lang = detect(text)
-            except LangDetectException:
-                # If langdetect fails, try to determine language based on characters
-                if any('\u0D00' <= ch <= '\u0D7F' for ch in text):
-                    lang = 'ml'
-                else:
-                    lang = 'en'  # Default to English if we can't detect
-            except Exception as e:
-                logger.warning(f"Language detection failed: {str(e)}")
-                lang = None
-        
-        return text, lang
-    finally:
-        try: 
-            os.unlink(tf.name)
-        except: 
-            pass
-
-# ---------- Malayalam detection ----------
-def is_malayalam(text, detected_lang):
-    if not text: 
-        return False
-    
-    # First, trust the language detection if it says Malayalam
-    if detected_lang == 'ml':
-        return True
-    
-    # If language detection is uncertain, check for Malayalam characters
-    malayalam_chars = sum(1 for ch in text if '\u0D00' <= ch <= '\u0D7F')
-    total_chars = len(text)
-    
-    # If more than 10% of characters are Malayalam, consider it Malayalam
-    if total_chars > 0 and malayalam_chars / total_chars > 0.1:
-        return True
-        
-    return False
-
-# ---------- Translation ----------
-def translate_ml_to_en(text):
-    if not text: 
-        return ""
-    
-    # Split text into chunks to avoid API limits
-    max_chunk_size = 5000  # Adjust based on API limits
-    chunks = [text[i:i+max_chunk_size] for i in range(0, len(text), max_chunk_size)]
-    translated_chunks = []
-    
-    for chunk in chunks:
-        if gcloud_client:
-            try:
-                res = gcloud_client.translate(chunk, source_language='ml', target_language='en')
-                translated_chunks.append(res.get('translatedText', chunk))
-                continue
-            except Exception as e:
-                logger.warning(f"Google Cloud translation failed: {str(e)}")
-        
+    text = text.strip()
+    lang = None
+    if text:
         try:
-            translated = gtranslator.translate(chunk, src='ml', dest='en').text
-            translated_chunks.append(translated)
-        except Exception as e:
-            logger.warning(f"Googletrans translation failed: {str(e)}")
-            translated_chunks.append(chunk)  # Fallback to original text
+            lang = detect(text)
+        except LangDetectException:
+            lang = 'en'
     
-    return " ".join(translated_chunks)
+    return text, lang
+
+def is_malayalam(text, detected_lang):
+    if not text: return False
+    if detected_lang == 'ml': return True
+    return any('\u0D00' <= char <= '\u0D7F' for char in text)
+
+def translate_ml_to_en(text):
+    if not text: return ""
+    translator = GTranslator()
+    try:
+        return translator.translate(text, src='ml', dest='en').text
+    except Exception as e:
+        logger.warning(f"Googletrans translation failed: {e}")
+        return text
+
+# ---------- AI Summary Generation ----------
+def generate_summary(text):
+    if not GEMINI_API_KEY:
+        logger.warning("GEMINI_API_KEY not set.")
+        return "Summary generation is not configured. API Key is missing."
+    if not text:
+        return "No text content to summarize."
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        prompt = f"Provide a brief, professional summary of the following document. Use bullet points for key items:\n\n---\n\n{text}"
+        response = model.generate_content(prompt)
+        return response.text
+    except google_exceptions.PermissionDenied as e:
+        logger.error(f"Gemini API Permission Denied: {e}")
+        return "Could not generate summary: The API key is invalid or the 'Generative Language API' is not enabled in your Google Cloud project."
+    except google_exceptions.InvalidArgument as e:
+        logger.error(f"Gemini API Invalid Argument: {e}")
+        return "Could not generate summary: The AI service received an invalid request. This might be a content safety issue."
+    except Exception as e:
+        logger.error(f"Gemini summary generation failed: {traceback.format_exc()}")
+        if 'api key not valid' in str(e).lower():
+             return "Could not generate summary: Your API Key is not valid. Please check it in your .env file."
+        return "Could not generate summary: An unexpected error occurred with the AI service."
 
 # ---------- Processing pipeline ----------
-def process_and_store(file_bytes, filename, filetype, uploaded_by="anonymous", source_type='upload', source_url=None, force_translate=False):
-    # First, save the original file
+def process_and_store(file_bytes, filename, filetype, uploaded_by="anonymous"):
     grid_id = save_file_to_gridfs(file_bytes, filename, filetype)
-    meta_id = insert_metadata(filename, grid_id, filetype, uploaded_by, source_type, source_url, None, None, None)
+    meta_id = insert_metadata(filename, grid_id, filetype, uploaded_by)
     
-    # Extract text and detect language
     extracted, detected_lang = extract_text_if_digital(file_bytes, filename, filetype)
     
     if not extracted:
-        update_metadata(meta_id, {"translation_status": "no_extractable_text", "language": None})
+        update_metadata(meta_id, {"translation_status": "no_extractable_text"})
         return {"original_meta_id": oid_to_str(meta_id), "translated": False, "reason": "no_extractable_text"}
     
-    # Check if the content is Malayalam
-    mal = is_malayalam(extracted, detected_lang)
-    
-    if not mal:
-        # CLASSIFY NON-MALAYALAM FILES
-        tags, confidence_scores = classify_by_rules(extracted)
-        update_document_with_tags(meta_id, tags, confidence_scores)
-        
+    if not is_malayalam(extracted, detected_lang):
+        tags, _ = classify_by_rules(extracted)
+        update_document_with_tags(meta_id, tags)
         update_metadata(meta_id, {"translation_status": "not_needed", "language": detected_lang or 'en'})
-        return {
-            "original_meta_id": oid_to_str(meta_id), 
-            "translated": False, 
-            "reason": "not_malayalam", 
-            "language": detected_lang,
-            "tags": tags,
-            "primary_tag": tags[0] if tags else 'miscellaneous'
-        }
+        return {"original_meta_id": oid_to_str(meta_id), "translated": False, "tags": tags, "primary_tag": tags[0] if tags else 'miscellaneous'}
+
+    translated_text = translate_ml_to_en(extracted)
+    trans_filename = os.path.splitext(filename)[0] + "_translated.txt"
+    trans_grid_id = save_file_to_gridfs(translated_text.encode("utf-8"), trans_filename, "text/plain")
+    trans_meta_id = insert_metadata(trans_filename, trans_grid_id, "text/plain", "system_translator", parent_id=meta_id, language="en", translation_status="translated")
     
-    # If Malayalam, create translation
-    base_txt = os.path.splitext(filename)[0] + ".txt"
-    existing = files_col.find_one({"parent_id": meta_id, "filename": base_txt})
-    
-    if existing and not force_translate:
-        update_metadata(meta_id, {"translation_status": "translated", "language": detected_lang})
-        return {
-            "original_meta_id": oid_to_str(meta_id), 
-            "translated": True, 
-            "translation_meta_id": oid_to_str(existing["_id"]), 
-            "note": "already_exists"
-        }
-    
-    try:
-        translated_text = translate_ml_to_en(extracted)
-    except Exception as e:
-        update_metadata(meta_id, {"translation_status": "failed", "language": detected_lang})
-        return {"original_meta_id": oid_to_str(meta_id), "translated": False, "reason": "translation_failed", "error": str(e)}
-    
-    # Save the translation
-    translated_bytes = translated_text.encode("utf-8")
-    trans_grid_id = save_file_to_gridfs(translated_bytes, base_txt, "text/plain")
-    trans_meta_id = insert_metadata(
-        base_txt, trans_grid_id, "text/plain", "system_translator", 
-        "translation", None, meta_id, "en", "translated"
-    )
-    
-    # CLASSIFY THE TRANSLATED ENGLISH TEXT
-    tags, confidence_scores = classify_by_rules(translated_text)
-    update_document_with_tags(trans_meta_id, tags, confidence_scores)
-    
+    tags, _ = classify_by_rules(translated_text)
+    update_document_with_tags(trans_meta_id, tags)
     update_metadata(meta_id, {"translation_status": "translated", "language": detected_lang})
     
-    return {
-        "original_meta_id": oid_to_str(meta_id), 
-        "translated": True, 
-        "translation_meta_id": oid_to_str(trans_meta_id),
-        "tags": tags,
-        "primary_tag": tags[0] if tags else 'miscellaneous'
-    }
+    return {"original_meta_id": oid_to_str(meta_id), "translated": True, "translation_meta_id": oid_to_str(trans_meta_id), "tags": tags, "primary_tag": tags[0] if tags else 'miscellaneous'}
 
 # ---------- Rules-Based Classification ----------
 CATEGORIES = {
-    'invoices': [
-        'invoice', 'bill', 'payment', 'amount', 'total', 'due', 'balance', 
-        '$', 'rs', 'usd', 'rupees', 'credit', 'debit', 'tax', 'gst', 'vat',
-        'amount due', 'payment received', 'financial', 'transaction', 'receipt',
-        'quotation', 'estimate', 'charges', 'fee', 'cost', 'price', 'payment terms'
-    ],
-    'safety_reports': [
-        'safety', 'audit', 'risk', 'hazard', 'compliance', 'regulation', 
-        'standard', 'incident', 'accident', 'injury', 'prevention', 'inspection',
-        'emergency', 'protocol', 'guideline', 'safety measure', 'risk assessment',
-        'hse', 'health safety environment', 'safety procedure', 'safety protocol',
-        'safety inspection', 'safety audit', 'risk management', 'hazard analysis'
-    ],
-    'urgent': [
-        'urgent', 'immediate', 'asap', 'critical', 'emergency', 'attention', 
-        'important', 'priority', 'time sensitive', 'deadline', 'expedite',
-        'rush', 'quick', 'without delay', 'prompt action', 'urgently', 'as soon as possible',
-        'time critical', 'high priority', 'urgent attention', 'immediate action'
-    ],
-    'engineering_drawings': [
-        'drawing', 'blueprint', 'cad', 'dimension', 'tolerance', 'specification', 
-        'technical', 'design', 'engineering', 'schematics', 'diagram', 'plan',
-        'layout', 'mechanical', 'electrical', 'civil', 'architecture', 'drafting',
-        'technical drawing', 'engineering diagram', 'construction drawing', 'assembly drawing',
-        'detail drawing', 'fabrication drawing', 'installation drawing'
-    ],
-    'miscellaneous': []  # Catch-all category
+    'invoices': ['invoice', 'bill', 'payment', 'amount', 'total', 'due', 'rs', 'tax', 'gst', 'receipt', 'quotation'],
+    'safety_reports': ['safety', 'audit', 'risk', 'hazard', 'compliance', 'incident', 'accident', 'inspection', 'hse'],
+    'urgent': ['urgent', 'immediate', 'asap', 'critical', 'emergency', 'priority', 'deadline'],
+    'engineering_drawings': ['drawing', 'blueprint', 'cad', 'dimension', 'specification', 'technical', 'design', 'engineering', 'schematics'],
 }
 
 def classify_by_rules(text):
-    """Classify text using keyword rules and return multiple tags"""
-    if not text:
-        return ['miscellaneous'], {'miscellaneous': 100.0}
-    
+    if not text: return ['miscellaneous'], {}
     text_lower = text.lower()
-    category_scores = {}
+    scores = {cat: sum(1 for kw in kws if kw in text_lower) for cat, kws in CATEGORIES.items()}
     
-    for category, keywords in CATEGORIES.items():
-        if category == 'miscellaneous':
-            continue
-            
-        score = 0
-        keyword_matches = []
-        
-        for keyword in keywords:
-            # Count occurrences of each keyword
-            occurrences = text_lower.count(keyword.lower())
-            if occurrences > 0:
-                # Base score for finding the keyword + bonus for multiple occurrences
-                score += 10 + (occurrences * 5)
-                keyword_matches.append(f"{keyword}({occurrences})")
-        
-        if score > 0:
-            category_scores[category] = score
+    tags = [cat for cat, score in scores.items() if score > 0]
+    tags.sort(key=lambda t: scores.get(t, 0), reverse=True)
+    if not tags: tags = ['miscellaneous']
     
-    # Apply threshold and get final tags
-    threshold = 15.0  # Minimum score to include a tag
-    final_tags = [tag for tag, score in category_scores.items() if score >= threshold]
-    
-    # Calculate confidence scores (normalized to 0-100)
-    confidence_scores = {}
-    if category_scores:
-        max_score = max(category_scores.values()) if category_scores else 1
-        for tag, score in category_scores.items():
-            confidence_scores[tag] = min(100, (score / max_score) * 100)
-    
-    # Always include miscellaneous if no other tags meet threshold
-    if not final_tags:
-        final_tags = ['miscellaneous']
-        confidence_scores['miscellaneous'] = 100.0
-    
-    # Sort by confidence score (highest first)
-    final_tags.sort(key=lambda x: confidence_scores[x], reverse=True)
-    
-    return final_tags, confidence_scores
+    return tags, scores
 
-def update_document_with_tags(meta_id, tags, confidence_scores):
-    """Update document with classification tags"""
-    try:
-        files_col.update_one(
-            {"_id": ObjectId(meta_id)},
-            {"$set": {
-                "category": tags[0] if tags else 'miscellaneous',
-                "tags": tags,
-                "confidence_scores": confidence_scores,
-                "classification_method": "rules_based",
-                "classification_status": "completed",
-                "classified_at": datetime.datetime.utcnow()
-            }}
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Failed to update document with tags: {e}")
-        return False
+def update_document_with_tags(meta_id, tags):
+    files_col.update_one(
+        {"_id": ObjectId(meta_id)},
+        {"$set": {
+            "category": tags[0] if tags else 'miscellaneous',
+            "tags": tags,
+            "classification_status": "completed",
+            "classified_at": datetime.datetime.utcnow()
+        }}
+    )
 
 # ---------- ROUTES ----------
 @app.route("/upload", methods=["POST"])
 def upload_route():
-    uploaded_by = request.form.get("uploaded_by", "anonymous")
-    force_translate = request.form.get("force_translate", "false").lower() == "true"
-    
-    if "file" not in request.files:
-        return jsonify({"error": "no file part"}), 400
-    
+    if "file" not in request.files: return jsonify({"error": "no file part"}), 400
     f = request.files["file"]
-    if f.filename == "":
-        return jsonify({"error": "no selected file"}), 400
-        
-    filename = f.filename or "uploaded.bin"
-    file_bytes = f.read()
-    filetype = f.mimetype or "application/octet-stream"
+    if f.filename == "": return jsonify({"error": "no selected file"}), 400
     
     try:
-        res = process_and_store(file_bytes, filename, filetype, uploaded_by, "upload", None, force_translate)
+        res = process_and_store(f.read(), f.filename, f.mimetype)
         return jsonify(res), 201
     except Exception as e:
         logger.error(f"Upload processing failed: {traceback.format_exc()}")
         return jsonify({"error": "processing_failed", "details": str(e)}), 500
 
-@app.route("/ingest_link", methods=["POST"])
-def ingest_link_route():
-    url = request.form.get("url")
-    if not url: 
-        return jsonify({"error": "no url provided"}), 400
+@app.route("/summary/<meta_id>", methods=["GET"])
+def get_summary_route(meta_id):
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "summary_unavailable", "message": "The AI summarization service is not configured on the server."}), 503
+
+    try:
+        meta = files_col.find_one({"_id": ObjectId(meta_id)})
+        if not meta: return jsonify({"error": "not_found"}), 404
+
+        if meta.get("translation_status") == "translated":
+            translated_doc = files_col.find_one({"parent_id": meta["_id"]})
+            if translated_doc: meta = translated_doc
         
-    uploaded_by = request.form.get("uploaded_by", "anonymous")
-    force_translate = request.form.get("force_translate", "false").lower() == "true"
-    
-    try:
-        file_bytes, filename, filetype = download_url_to_bytes(url)
+        grid_id = meta.get("gridfs_id")
+        if not grid_id or not fs.exists(grid_id):
+            return jsonify({"error": "file_not_found_in_gridfs"}), 404
+
+        gf = fs.get(grid_id)
+        text = gf.read().decode('utf-8', errors='ignore')
+        
+        summary = generate_summary(text)
+        # Check if the summary is an error message from our function
+        if "Could not generate summary" in summary or "is not configured" in summary:
+            return jsonify({"error": "summary_failed", "message": summary}), 500
+
+        return jsonify({"summary": summary})
+        
     except Exception as e:
-        logger.error(f"Download failed: {str(e)}")
-        return jsonify({"error": "download_failed", "details": str(e)}), 400
-    
-    try:
-        res = process_and_store(file_bytes, filename, filetype, uploaded_by, "link", url, force_translate)
-        return jsonify(res), 201
-    except Exception as e:
-        logger.error(f"Link processing failed: {traceback.format_exc()}")
-        return jsonify({"error": "processing_failed", "details": str(e)}), 500
+        logger.error(f"Summary generation route failed for {meta_id}: {traceback.format_exc()}")
+        return jsonify({"error": "summary_failed", "details": str(e)}), 500
 
 @app.route("/files", methods=["GET"])
 def list_files_enhanced():
     out = []
-    for r in files_col.find().sort("uploaded_at", -1).limit(200):
+    for r in files_col.find({"parent_id": None}).sort("uploaded_at", -1).limit(200):
+        category = r.get("category")
+        if not category and r.get("translation_status") == "translated":
+            child_doc = files_col.find_one({"parent_id": r["_id"]})
+            if child_doc: category = child_doc.get("category", "miscellaneous")
+
         out.append({
             "meta_id": oid_to_str(r["_id"]),
             "filename": r.get("filename"),
-            "content_type": r.get("content_type"),
-            "uploaded_by": r.get("uploaded_by"),
             "uploaded_at": r.get("uploaded_at").isoformat() if r.get("uploaded_at") else None,
-            "source_type": r.get("source_type"),
-            "source_url": r.get("source_url"),
-            "parent_id": oid_to_str(r.get("parent_id")),
-            "language": r.get("language"),
-            "translation_status": r.get("translation_status"),
-            # Add classification fields
-            "category": r.get("category"),
-            "tags": r.get("tags", []),
-            "confidence_scores": r.get("confidence_scores", {}),
-            "classification_status": r.get("classification_status"),
-            "classified_at": r.get("classified_at").isoformat() if r.get("classified_at") else None
+            "category": category or "miscellaneous",
         })
     return jsonify(out)
 
@@ -508,237 +280,62 @@ def list_files_enhanced():
 def download(meta_id):
     try:
         meta = files_col.find_one({"_id": ObjectId(meta_id)})
-        if not meta: 
-            return jsonify({"error": "not_found"}), 404
-            
-        grid_id = meta.get("gridfs_id")
-        if not grid_id: 
-            return jsonify({"error": "gridfs_id_missing"}), 500
-            
-        gf = fs.get(grid_id)
-        data = gf.read()
-        
-        return send_file(
-            io.BytesIO(data), 
-            mimetype=meta.get("content_type") or "application/octet-stream", 
-            as_attachment=True, 
-            download_name=meta.get("filename")
-        )
+        if not meta: return jsonify({"error": "not_found"}), 404
+        gf = fs.get(meta["gridfs_id"])
+        return send_file(io.BytesIO(gf.read()), mimetype=meta.get("content_type"), as_attachment=True, download_name=meta.get("filename"))
     except Exception as e:
-        logger.error(f"Download failed: {str(e)}")
+        logger.error(f"Download failed for {meta_id}: {e}")
         return jsonify({"error": "download_failed", "details": str(e)}), 500
 
 @app.route("/reprocess/<meta_id>", methods=["POST"])
 def reprocess(meta_id):
-    force = request.args.get("force", "false").lower() == "true"
-    
     try:
         meta = files_col.find_one({"_id": ObjectId(meta_id)})
-        if not meta: 
-            return jsonify({"error": "not_found"}), 404
-            
+        if not meta: return jsonify({"error": "not_found"}), 404
+        
+        child_doc = files_col.find_one_and_delete({"parent_id": ObjectId(meta_id)})
+        if child_doc and child_doc.get("gridfs_id"): fs.delete(child_doc["gridfs_id"])
+
         gf = fs.get(meta["gridfs_id"])
-        file_bytes = gf.read()
-        
-        res = process_and_store(
-            file_bytes, meta["filename"], meta.get("content_type"), 
-            meta.get("uploaded_by"), meta.get("source_type"), 
-            meta.get("source_url"), force
-        )
-        
+        res = process_and_store(gf.read(), meta["filename"], meta.get("content_type"))
         return jsonify(res)
     except Exception as e:
-        logger.error(f"Reprocessing failed: {traceback.format_exc()}")
-        return jsonify({"error": "processing_failed", "details": str(e)}), 500
-
-@app.route("/ocr_text/<meta_id>", methods=["POST"])
-def ocr_text_route(meta_id):
-    try:
-        payload = request.get_json(force=True)
-        text = payload.get("ocr_text", "")
-        
-        if not text: 
-            return jsonify({"error": "no ocr_text provided"}), 400
-            
-        force = bool(payload.get("force", False))
-        
-        try:
-            lang = detect(text)
-        except LangDetectException:
-            # If langdetect fails, check for Malayalam characters
-            if any('\u0D00' <= ch <= '\u0D7F' for ch in text):
-                lang = 'ml'
-            else:
-                lang = 'en'
-        except Exception:
-            lang = None
-        
-        mal = (lang == 'ml') or any('\u0D00' <= ch <= '\u0D7F' for ch in text)
-        
-        if not mal: 
-            return jsonify({"translated": False, "reason": "not_malayalam", "detected_lang": lang})
-        
-        parent_meta = files_col.find_one({"_id": ObjectId(meta_id)})
-        if not parent_meta: 
-            return jsonify({"error": "parent_not_found"}), 404
-            
-        base_txt = os.path.splitext(parent_meta["filename"])[0] + ".txt"
-        existing = files_col.find_one({"parent_id": parent_meta["_id"], "filename": base_txt})
-        
-        if existing and not force:
-            return jsonify({
-                "translated": True, 
-                "translation_meta_id": oid_to_str(existing["_id"]), 
-                "note": "already_exists"
-            })
-        
-        translated = translate_ml_to_en(text)
-        tbytes = translated.encode("utf-8")
-        tgrid = save_file_to_gridfs(tbytes, base_txt, "text/plain")
-        
-        tmeta_id = insert_metadata(
-            base_txt, tgrid, "text/plain", 
-            payload.get("uploader", "ocr_user"), "translation", 
-            None, parent_meta["_id"], "en", "translated"
-        )
-        
-        update_metadata(parent_meta["_id"], {"translation_status": "translated"})
-        
-        return jsonify({"translated": True, "translation_meta_id": oid_to_str(tmeta_id)})
-    except Exception as e:
-        logger.error(f"OCR translation failed: {traceback.format_exc()}")
-        return jsonify({"error": "ocr_translation_failed", "details": str(e)}), 500
-    
-# ---------- Classification Routes ----------
-@app.route("/classify/<meta_id>", methods=["POST"])
-def classify_document(meta_id):
-    """Classify a specific document using rules"""
-    try:
-        # Get document metadata
-        doc = files_col.find_one({"_id": ObjectId(meta_id)})
-        if not doc:
-            return jsonify({"error": "Document not found"}), 404
-        
-        # Get text content from GridFS
-        try:
-            gf = fs.get(doc["gridfs_id"])
-            file_bytes = gf.read()
-            text, _ = extract_text_if_digital(file_bytes, doc["filename"], doc.get("content_type"))
-        except Exception as e:
-            return jsonify({"error": f"Could not retrieve document text: {str(e)}"}), 400
-        
-        if not text:
-            return jsonify({"error": "Could not extract text from document"}), 400
-        
-        # Perform classification
-        tags, confidence_scores = classify_by_rules(text)
-        
-        # Update database
-        success = update_document_with_tags(meta_id, tags, confidence_scores)
-        
-        if success:
-            return jsonify({
-                "success": True,
-                "meta_id": meta_id,
-                "tags": tags,
-                "confidence_scores": confidence_scores,
-                "classification_method": "rules_based"
-            }), 200
-        else:
-            return jsonify({"error": "Failed to update database"}), 500
-            
-    except Exception as e:
-        return jsonify({"error": f"Classification error: {str(e)}"}), 500
+        logger.error(f"Reprocessing failed for {meta_id}: {traceback.format_exc()}")
+        return jsonify({"error": "reprocessing_failed", "details": str(e)}), 500
 
 @app.route("/search-by-tag/<tag>", methods=["GET"])
 def search_by_tag(tag):
-    """Search for documents with a specific tag"""
     try:
-        documents = list(files_col.find({
-            "tags": tag,
-            "classification_status": "completed"
-        }).sort("classified_at", -1))
+        query = {"tags": tag}
+        tagged_docs_cursor = files_col.find(query)
         
-        return jsonify({
-            "success": True,
-            "tag": tag,
-            "count": len(documents),
-            "documents": [{
+        parent_ids = {doc.get("parent_id") for doc in tagged_docs_cursor if doc.get("parent_id")}
+        original_ids = {doc["_id"] for doc in files_col.find({**query, "parent_id": None})}
+        
+        all_relevant_ids = list(parent_ids.union(original_ids))
+        if not all_relevant_ids: return jsonify({"documents": []})
+
+        documents = list(files_col.find({"_id": {"$in": all_relevant_ids}}).sort("uploaded_at", -1))
+        
+        output_docs = []
+        for doc in documents:
+            category = doc.get("category")
+            if not category and doc.get("translation_status") == "translated":
+                child = files_col.find_one({"parent_id": doc["_id"]})
+                category = child.get("category", "miscellaneous") if child else "miscellaneous"
+            
+            output_docs.append({
                 "meta_id": str(doc["_id"]),
                 "filename": doc.get("filename", "unknown"),
-                "confidence": doc.get("confidence_scores", {}).get(tag, 0),
-                "classified_at": doc.get("classified_at")
-            } for doc in documents]
-        }), 200
+                "uploaded_at": doc.get("uploaded_at").isoformat(),
+                "category": category or "miscellaneous",
+            })
         
+        return jsonify({"documents": output_docs})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/classification-status", methods=["GET"])
-def classification_status_with_meta_id():
-    """Get classification status for a specific document or overall stats"""
-    meta_id = request.args.get("meta_id")
-    
-    if meta_id:
-        # Get specific document status
-        try:
-            doc = files_col.find_one({"_id": ObjectId(meta_id)})
-            if not doc:
-                return jsonify({"error": "Document not found"}), 404
-            
-            # Determine status based on document fields
-            if doc.get("classification_status") == "completed":
-                status = "done"
-            elif doc.get("translation_status") == "failed":
-                status = "failed"
-            else:
-                status = "processing"
-            
-            return jsonify({
-                "success": True,
-                "status": status,
-                "meta_id": meta_id,
-                "tags": doc.get("tags", []),
-                "primary_tag": doc.get("category", "miscellaneous"),
-                "assigned_department": get_department_from_tag(doc.get("category", "miscellaneous")),
-                "confidence_scores": doc.get("confidence_scores", {}),
-                "classification_method": doc.get("classification_method", "rules_based"),
-                "language": doc.get("language"),
-                "translation_status": doc.get("translation_status")
-            }), 200
-            
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    else:
-        # Return overall classification statistics (existing logic)
-        try:
-            total_files = files_col.count_documents({})
-            classified_files = files_col.count_documents({"classification_status": "completed"})
-            
-            # Get tag distribution
-            pipeline = [
-                {"$match": {"classification_status": "completed"}},
-                {"$unwind": "$tags"},
-                {"$group": {"_id": "$tags", "count": {"$sum": 1}}}
-            ]
-            tag_stats = list(files_col.aggregate(pipeline))
-            
-            return jsonify({
-                "success": True,
-                "total_files": total_files,
-                "classified_files": classified_files,
-                "completion_rate": (classified_files / total_files * 100) if total_files > 0 else 0,
-                "tag_distribution": {stat["_id"]: stat["count"] for stat in tag_stats}
-            }), 200
-            
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-# ---------- Health Check Route ----------
-@app.route("/health", methods=["GET"])
-def health_check():
-    """Simple health check endpoint"""
-    return jsonify({"status": "healthy", "timestamp": datetime.datetime.utcnow().isoformat()}), 200
+        logger.error(f"Search by tag failed for {tag}: {traceback.format_exc()}")
+        return jsonify({"error": "search_failed", "details": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+

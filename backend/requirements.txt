@@ -1,8 +1,9 @@
-Flask>=2.0.0
-flask-cors>=3.0.0
-pymongo>=4.0.0
-requests>=2.25.0
-pdfplumber>=0.7.0
-python-docx>=0.8.11
-langdetect>=1.0.9
-googletrans==4.0.0rc1
+flask
+pymongo
+requests
+pdfplumber
+python-docx
+langdetect
+googletrans==4.0.0-rc1
+google-generativeai
+python-dotenv
