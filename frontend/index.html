@@ -8,530 +8,237 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Updated color theme */
-        body {
-            background-color: #0B3C46;
-            color: #FFDF00;
-        }
-        
-        /* Header styles */
-        header {
-            background-color: #1A1F24;
-            border-bottom: 1px solid #0B3C46;
-        }
-        
-        header h1, 
-        header .text-gray-600,
-        header .text-gray-400 {
-            color: #FFDF00 !important;
-        }
-        
-        header input {
-            background-color: #1A1F24;
-            border-color: #0B3C46;
-            color: #FFDF00;
-        }
-        
-        header input::placeholder {
-            color: #8B8B66;
-        }
-        
-        /* Sidebar styles */
-        .sidebar {
-            background-color: #1A1F24;
-        }
-        
-        .sidebar a,
-        .sidebar .text-gray-600,
-        .sidebar .text-gray-500 {
-            color: #FFDF00 !important;
-        }
-        
-        .sidebar a:hover {
-            background-color: #0B3C46 !important;
-        }
-        
-        .sidebar .bg-blue-50 {
-            background-color: #0B3C46 !important;
-        }
-        
-        .sidebar .text-blue-700 {
-            color: #FFDF00 !important;
-        }
-        
-        /* Main content styles */
-        .main-content {
-            background-color: #0B3C46;
-        }
-        
-        .main-content .text-gray-800,
-        .main-content .text-gray-600,
-        .main-content .text-gray-900 {
-            color: #FFDF00 !important;
-        }
-        
-        /* Card and table styles */
-        .bg-white {
-            background-color: #1A1F24 !important;
-        }
-        
-        .bg-gray-50 {
-            background-color: #0B3C46 !important;
-        }
-        
-        .bg-blue-100 {
-            background-color: #0B3C46 !important;
-        }
-        
-        .text-gray-500,
-        .text-gray-700,
-        .text-gray-600 {
-            color: #FFDF00 !important;
-        }
-        
-        /* Upload area */
-        .upload-area {
-            border: 2px dashed #2D3843;
-            background-color: #1A1F24;
-        }
-        
-        .upload-area.dragover {
-            border-color: #FFDF00;
-            background-color: #2D3843;
-        }
-        
-        /* Table styles */
-        .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-            border-color: #0B3C46;
-        }
-        
-        /* Hover effects */
-        .hover\:bg-gray-50:hover {
-            background-color: #2D3843 !important;
-        }
-        
-        /* Department colors */
+        body { background-color: #0B3C46; color: #FFDF00; }
+        header { background-color: #1A1F24; border-bottom: 1px solid #0B3C46; }
+        header h1, header .text-gray-600, header .text-gray-400 { color: #FFDF00 !important; }
+        header input { background-color: #1A1F24; border-color: #0B3C46; color: #FFDF00; }
+        header input::placeholder { color: #8B8B66; }
+        .sidebar { background-color: #1A1F24; }
+        .sidebar a, .sidebar .text-gray-600, .sidebar .text-gray-500 { color: #FFDF00 !important; }
+        .sidebar a:hover { background-color: #0B3C46 !important; }
+        .sidebar .bg-blue-50 { background-color: #0B3C46 !important; }
+        .sidebar .text-blue-700 { color: #FFDF00 !important; }
+        .main-content { background-color: #0B3C46; }
+        .main-content .text-gray-800, .main-content .text-gray-600, .main-content .text-gray-900 { color: #FFDF00 !important; }
+        .bg-white { background-color: #1A1F24 !important; }
+        .bg-gray-50 { background-color: #0B3C46 !important; }
+        .text-gray-500, .text-gray-700, .text-gray-600 { color: #FFDF00 !important; }
+        .upload-area { border: 2px dashed #2D3843; background-color: #1A1F24; }
+        .upload-area.dragover { border-color: #FFDF00; background-color: #2D3843; }
+        .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #0B3C46; }
+        .hover\:bg-gray-50:hover { background-color: #2D3843 !important; }
         .department-safety { border-left: 4px solid #E53E3E; }
         .department-finance { border-left: 4px solid #38A169; }
         .department-engineering { border-left: 4px solid #3182CE; }
         .department-urgent { border-left: 4px solid #D69E2E; }
         .department-general { border-left: 4px solid #805AD5; }
-        
-        /* Button styles */
         button, .btn { color: #FFDF00; }
-        
-        #downloadPdf {
-            background-color: #2D3843;
-            border: 1px solid #FFDF00;
-        }
-        
+        #downloadPdf { background-color: #2D3843; border: 1px solid #FFDF00; }
         #downloadPdf:hover { background-color: #3D4853; }
-        
-        /* SVG icon colors */
-        svg.text-gray-400,
-        svg.text-blue-600,
-        svg.text-red-600 { color: #FFDF00 !important; }
+        svg.text-gray-400, svg.text-blue-600, svg.text-red-600 { color: #FFDF00 !important; }
         .text-blue-600 { color: #FFDF00 !important; }
-        
-        /* Loading spinner */
         .animate-spin { border-color: #FFDF00 transparent #FFDF00 transparent !important; }
-        
-        /* Progress bar */
-        .progress-container {
-            width: 100%;
-            background-color: #2D3843;
-            border-radius: 4px;
-            margin: 10px 0;
-            display: none;
-        }
-        
-        .progress-bar {
-            height: 6px;
-            background-color: #FFDF00;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-            width: 0%;
-        }
-
-        #analysisContent ul {
-            list-style-type: disc;
-            padding-left: 20px;
-        }
-        #analysisContent li {
-            margin-bottom: 8px;
-        }
-        
+        .progress-container { width: 100%; background-color: #2D3843; border-radius: 4px; margin: 10px 0; display: none; }
+        .progress-bar { height: 6px; background-color: #FFDF00; border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+        #analysisContent ul { list-style-type: none; padding-left: 0; }
+        #analysisContent li { margin-bottom: 8px; }
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 50;
-                height: 100vh;
-                width: 256px;
-                transition: transform 0.3s ease-in-out;
-            }
+            .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; height: 100vh; width: 256px; transition: transform 0.3s ease-in-out; }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0; width: 100%; }
         }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
-    <!-- Top Navigation Bar -->
+    <!-- UI Structure -->
     <header class="bg-white shadow-sm flex-shrink-0">
         <div class="flex items-center justify-between px-6 py-3">
             <div class="flex items-center">
-                <button id="menuToggle" class="md:hidden mr-4 text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
-                <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">KM</div>
-                    <h1 class="ml-3 text-xl font-semibold text-gray-800">Kochi Metro Documents</h1>
-                </div>
+                <button id="menuToggle" class="md:hidden mr-4 text-gray-600"><i class="fas fa-bars"></i></button>
+                <div class="flex items-center"><div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">KM</div><h1 class="ml-3 text-xl font-semibold">Kochi Metro Docs</h1></div>
             </div>
-            <div class="flex items-center">
-                <div class="relative mr-4">
-                    <input type="text" id="searchInput" placeholder="Search files..." class="pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
-                <a href="/home.html" class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold" title="Go to Home Page">H</a>
-            </div>
+            <a href="/home.html" class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold" title="Go to Home Page">H</a>
         </div>
     </header>
-
     <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="sidebar bg-white shadow-md w-64 flex-shrink-0">
-            <nav class="p-4">
-                <div class="mb-8">
-                    <button id="uploadBtn" class="w-full flex items-center justify-between bg-blue-100 text-blue-700 font-medium py-3 px-4 rounded-lg hover:bg-blue-200 transition-colors">
-                        <span>New Upload</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                    </button>
-                    <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.doc">
-                </div>
-                
-                <ul class="space-y-2">
-                    <li class="font-medium text-gray-500 text-xs uppercase tracking-wider pl-2 mb-2">Main</li>
-                    <li><a href="#" data-category="all" class="category-link flex items-center px-4 py-2 text-gray-700 bg-blue-50 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>My Drive</a></li>
-                </ul>
-                
-                <ul class="mt-8 space-y-2">
-                    <li class="font-medium text-gray-500 text-xs uppercase tracking-wider pl-2 mb-2">Departments</li>
-                    <li><a href="#" data-category="safety_reports" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"><div class="w-3 h-3 rounded-full bg-red-500 mr-3"></div>Safety Reports</a></li>
-                    <li><a href="#" data-category="invoices" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"><div class="w-3 h-3 rounded-full bg-green-500 mr-3"></div>Invoices</a></li>
-                    <li><a href="#" data-category="engineering_drawings" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"><div class="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>Engineering</a></li>
-                    <li><a href="#" data-category="urgent" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"><div class="w-3 h-3 rounded-full bg-yellow-500 mr-3"></div>Urgent</a></li>
-                    <li><a href="#" data-category="miscellaneous" class="category-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"><div class="w-3 h-3 rounded-full bg-purple-500 mr-3"></div>Miscellaneous</a></li>
-                </ul>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
+        <aside class="sidebar bg-white shadow-md w-64 flex-shrink-0"><nav class="p-4"><ul class="space-y-2"><li class="font-medium text-xs uppercase tracking-wider pl-2 mb-2">Departments</li><li><a href="#" data-category="all" class="category-link flex items-center px-4 py-2 rounded-lg bg-blue-50"><i class="fas fa-folder mr-3"></i>All Documents</a></li><li><a href="#" data-category="invoices" class="category-link flex items-center px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-file-invoice-dollar mr-3 text-green-500"></i>Invoices</a></li><li><a href="#" data-category="safety_reports" class="category-link flex items-center px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-shield-alt mr-3 text-red-500"></i>Safety Reports</a></li><li><a href="#" data-category="engineering_drawings" class="category-link flex items-center px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-drafting-compass mr-3 text-blue-500"></i>Engineering</a></li><li><a href="#" data-category="urgent" class="category-link flex items-center px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-exclamation-circle mr-3 text-yellow-500"></i>Urgent</a></li><li><a href="#" data-category="miscellaneous" class="category-link flex items-center px-4 py-2 hover:bg-gray-100 rounded-lg"><i class="fas fa-box-open mr-3 text-purple-500"></i>Miscellaneous</a></li></ul></nav></aside>
         <main class="main-content flex-1 overflow-y-auto p-6">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Welcome to Kochi Metro Document Hub</h2>
-                <p class="text-gray-600">Upload, organize, and manage your documents efficiently</p>
-            </div>
-
-            <!-- Upload Section -->
             <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Upload New File</h3>
-                <div id="uploadArea" class="upload-area rounded-lg p-8 text-center cursor-pointer mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                    <p class="text-gray-600">Drag & drop or <span class="text-blue-600 font-medium">browse files</span></p>
-                    <p class="text-sm text-gray-500 mt-2">PDF, DOCX, TXT (Max 10MB)</p>
-                </div>
-                
-                <div id="progressContainer" class="progress-container"><div id="progressBar" class="progress-bar"></div></div>
-
-                <!-- File Preview and Summary Section -->
-                <div id="previewSection" class="hidden mt-8">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">File Analysis</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div id="filePreview" class="bg-gray-50 rounded-lg p-4"></div>
-                        
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="font-medium text-gray-700 mb-3">AI Analysis</h4>
-                            <div id="analysisContent" class="p-4 bg-white rounded-lg shadow-sm h-64 overflow-y-auto"></div>
-                            <div class="mt-4 flex justify-end">
-                                <button id="downloadPdf" class="px-4 py-2 text-white rounded-lg flex items-center btn">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    Download Report
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                <h3 class="text-lg font-semibold mb-4">Upload New File</h3>
+                <div id="uploadArea" class="upload-area rounded-lg p-8 text-center cursor-pointer mb-4"><i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mx-auto mb-3"></i><p>Drag & drop or <span class="font-medium text-blue-400">browse files</span></p><p class="text-sm mt-2">PDF, DOCX, TXT</p></div>
+                <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt">
+                <div id="progressContainer"><div id="progressBar"></div></div>
+                <div id="previewSection" class="hidden mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="filePreview" class="bg-gray-50 rounded-lg p-4"></div>
+                    <div class="bg-gray-50 rounded-lg p-4"><h4 class="font-medium mb-3">AI Analysis</h4><div id="analysisContent" class="p-4 bg-white rounded-lg shadow-sm h-64 overflow-y-auto"></div><div class="mt-4 flex justify-end"><button id="downloadPdf" class="px-4 py-2 text-white rounded-lg flex items-center btn"><i class="fas fa-download mr-2"></i>Download Report</button></div></div>
                 </div>
             </div>
-
-            <!-- Files Table Section -->
             <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800" id="sectionTitle">Recent Files</h3>
-                    <button id="refreshFiles" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm btn">Refresh</button>
-                </div>
-                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">
-                    <thead><tr>
-                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr></thead>
-                    <tbody id="filesTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-                </table></div>
+                <h3 class="text-lg font-semibold mb-4" id="sectionTitle">Recent Files</h3>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200"><thead><tr><th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider">Name</th><th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider">Category</th><th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider">Uploaded</th><th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider">Actions</th></tr></thead><tbody id="filesTableBody" class="bg-white divide-y divide-gray-200"></tbody></table></div>
             </div>
         </main>
     </div>
 
     <script>
-        // --- GLOBAL VARS & DOM ELEMENTS ---
-        let currentFiles = [];
-        let currentCategory = 'all';
-        const G = id => document.getElementById(id);
-        const Q = s => document.querySelector(s);
-        const menuToggle = G('menuToggle'), sidebar = Q('.sidebar'), uploadArea = G('uploadArea');
-        const uploadBtn = G('uploadBtn'), fileInput = G('fileInput'), previewSection = G('previewSection');
-        const filePreview = G('filePreview'), analysisContent = G('analysisContent'), downloadPdfBtn = G('downloadPdf');
-        const progressContainer = G('progressContainer'), progressBar = G('progressBar');
-        const filesTableBody = G('filesTableBody'), sectionTitle = G('sectionTitle'), refreshFiles = G('refreshFiles');
-        const searchInput = G('searchInput');
-
-        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadFiles();
-            setupEventListeners();
-        });
-
-        // --- EVENT LISTENERS ---
-        function setupEventListeners() {
-            menuToggle.addEventListener('click', () => sidebar.classList.toggle('active'));
-            uploadBtn.addEventListener('click', () => fileInput.click());
-            uploadArea.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', e => e.target.files.length && handleFileUpload(e.target.files[0]));
+            const G = id => document.getElementById(id);
+            const uploadArea = G('uploadArea'), fileInput = G('fileInput');
+            const previewSection = G('previewSection'), filePreview = G('filePreview'), analysisContent = G('analysisContent');
+            const progressContainer = G('progressContainer'), progressBar = G('progressBar');
+            const filesTableBody = G('filesTableBody');
             
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => uploadArea.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }));
-            uploadArea.addEventListener('dragover', () => uploadArea.classList.add('dragover'));
-            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-            uploadArea.addEventListener('drop', e => {
-                uploadArea.classList.remove('dragover');
-                e.dataTransfer.files.length && handleFileUpload(e.dataTransfer.files[0]);
-            });
+            const loadFiles = async () => {
+                try {
+                    const response = await fetch('/files');
+                    const files = await response.json();
+                    displayFiles(files);
+                } catch (error) {
+                    filesTableBody.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 p-4">Error loading files.</td></tr>`;
+                }
+            };
 
-            document.querySelectorAll('.category-link').forEach(link => link.addEventListener('click', e => {
-                e.preventDefault();
-                document.querySelectorAll('.category-link').forEach(l => l.classList.remove('bg-blue-50'));
-                link.classList.add('bg-blue-50');
-                currentCategory = link.dataset.category;
-                loadFilesByCategory(currentCategory);
-            }));
+            const displayFiles = (files) => {
+                if (!files || files.length === 0) {
+                    filesTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">No documents found.</td></tr>`;
+                    return;
+                }
+                filesTableBody.innerHTML = files.map(file => {
+                    const category = file.category || 'miscellaneous';
+                    const translationLink = file.has_translation
+                        ? `<a href="/download/${file.translation_meta_id}" class="text-yellow-400 hover:text-yellow-600 ml-3">Download Translation</a>`
+                        : '';
+                    return `
+                        <tr class="hover:bg-gray-50 ${getDepartmentClass(category)}">
+                            <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center">${getFileIcon(file.filename)}<div class="ml-4 font-medium">${file.filename}</div></div></td>
+                            <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs rounded-full ${getCategoryColor(category)}">${category.replace(/_/g, ' ')}</span></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(file.uploaded_at).toLocaleDateString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="/download/${file.meta_id}" class="text-blue-400 hover:text-blue-600">Download Original</a>
+                                ${translationLink}
+                            </td>
+                        </tr>`;
+                }).join('');
+            };
 
-            refreshFiles.addEventListener('click', () => loadFilesByCategory(currentCategory));
-            searchInput.addEventListener('input', e => filterFiles(e.target.value));
-        }
-
-        // --- FILE HANDLING & UPLOAD ---
-        async function handleFileUpload(file) {
-            if (!file) return;
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
-            previewSection.classList.remove('hidden');
-            filePreview.innerHTML = getLoadingSpinner('Preparing file...');
-            analysisContent.innerHTML = getLoadingSpinner('Uploading & classifying...');
-            
-            try {
-                const result = await uploadFileToServer(file);
-                progressContainer.style.display = 'none';
-                await displayUploadResults(file, result);
-                await loadFilesByCategory(currentCategory);
-            } catch (error) {
-                progressContainer.style.display = 'none';
-                analysisContent.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-                console.error('Upload error:', error);
-            }
-        }
-
-        function uploadFileToServer(file) {
-            return new Promise((resolve, reject) => {
+            const handleFileUpload = async (file) => {
+                if (!file) return;
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                previewSection.classList.remove('hidden');
+                filePreview.innerHTML = getLoadingSpinner('Preparing...');
+                analysisContent.innerHTML = getLoadingSpinner('Uploading...');
+                
                 const formData = new FormData();
                 formData.append('file', file);
-                const xhr = new XMLHttpRequest();
-                xhr.upload.onprogress = e => e.lengthComputable && (progressBar.style.width = ((e.loaded / e.total) * 100) + '%');
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        try { resolve(JSON.parse(xhr.responseText)); }
-                        catch (e) { reject(new Error('Invalid server response.')); }
-                    } else { reject(new Error(`Server error: ${xhr.statusText}`)); }
-                };
-                xhr.onerror = () => reject(new Error('Network error.'));
-                xhr.open('POST', '/upload', true);
-                xhr.send(formData);
-            });
-        }
-        
-        async function reprocessFile(metaId) {
-            try {
-                const response = await fetch(`/reprocess/${metaId}`, { method: 'POST' });
-                if (!response.ok) throw new Error('Reprocess request failed.');
-                console.log('Success: File reprocessing started.');
-                setTimeout(() => loadFilesByCategory(currentCategory), 2000);
-            } catch (error) { console.error('Error:', error.message); }
-        }
-
-        // --- DATA FETCHING & DISPLAY ---
-        async function loadFilesByCategory(category) {
-            try {
-                const url = (category === 'all') ? '/files' : `/search-by-tag/${category}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Failed to load files');
-                const data = await response.json();
-                currentFiles = Array.isArray(data) ? data : (data.documents || []);
-                updateSectionTitle(category);
-                displayFiles(currentFiles);
-            } catch (error) {
-                console.error('Failed to load files:', error);
-                filesTableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">${error.message}</td></tr>`;
-            }
-        }
-
-        async function loadFiles() { await loadFilesByCategory('all'); }
-
-        function displayFiles(files) {
-            if (!files || files.length === 0) {
-                filesTableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">No documents found</td></tr>`;
-                return;
-            }
-            filesTableBody.innerHTML = files.map(file => {
-                const category = file.category || 'miscellaneous';
                 
-                // *** THIS IS THE NEW CODE ***
-                // Conditionally create the download link for the translation
-                const translationLink = file.has_translation
-                    ? `<a href="/download/${file.translation_meta_id}" class="text-yellow-400 hover:text-yellow-600 ml-3">Download Translation</a>`
-                    : '';
-
-                return `
-                    <tr class="${getDepartmentClass(category)} hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center">
-                            ${getFileIcon(file.filename)}
-                            <div class="ml-4"><div class="text-sm font-medium">${file.filename || ''}</div></div>
-                        </div></td>
-                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 py-1 text-xs rounded-full ${getCategoryColor(category)}">${category.replace(/_/g, ' ')}</span></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(file.uploaded_at).toLocaleDateString()}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="/download/${file.meta_id}" class="text-blue-400 hover:text-blue-600">Download Original</a>
-                            ${translationLink}
-                            <button onclick="reprocessFile('${file.meta_id}')" class="text-green-400 hover:text-green-600 ml-3">Reprocess</button>
-                        </td>
-                    </tr>`;
-            }).join('');
-        }
-
-        function filterFiles(term) {
-            const searchTerm = term.toLowerCase();
-            if (!searchTerm) { displayFiles(currentFiles); return; }
-            displayFiles(currentFiles.filter(f => f.filename?.toLowerCase().includes(searchTerm) || f.category?.toLowerCase().includes(searchTerm)));
-        }
-
-        // --- UI & CONTENT GENERATION ---
-        async function displayUploadResults(file, result) {
-            displayFilePreview(file);
-            analysisContent.innerHTML = getLoadingSpinner('Generating AI summary...');
-            const metaIdToSummarize = result.translated ? result.translation_meta_id : result.original_meta_id;
-            
-            try {
-                const summaryRes = await fetch(`/summary/${metaIdToSummarize}`);
-                if (!summaryRes.ok) {
-                    const errorData = await summaryRes.json();
-                    throw new Error(errorData.message || 'Failed to fetch summary.');
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.onprogress = e => e.lengthComputable && (progressBar.style.width = `${(e.loaded / e.total) * 100}%`);
+                    xhr.open('POST', '/upload', true);
+                    xhr.onload = async () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            const result = JSON.parse(xhr.responseText);
+                            await displayUploadResults(file, result);
+                            loadFiles();
+                        } else {
+                            analysisContent.innerHTML = `<p class="text-red-500">Upload failed: ${xhr.statusText}</p>`;
+                        }
+                        setTimeout(() => progressContainer.style.display = 'none', 1000);
+                    };
+                    xhr.onerror = () => { analysisContent.innerHTML = `<p class="text-red-500">A network error occurred.</p>`; };
+                    xhr.send(formData);
+                } catch (error) {
+                    analysisContent.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
                 }
+            };
+            
+            const displayUploadResults = async (file, result) => {
+                displayFilePreview(file);
+                analysisContent.innerHTML = getLoadingSpinner('Generating summary...');
+                
+                // *** THIS IS THE FIX ***
+                // Always use the original_meta_id. The backend is smart enough to find
+                // the translated text if it exists. This simplifies the logic and makes it more reliable.
+                const metaIdToSummarize = result.original_meta_id;
+                
+                const summaryRes = await fetch(`/summary/${metaIdToSummarize}`);
                 const summaryData = await summaryRes.json();
                 
-                displayAnalysisContent(result, summaryData.summary);
-                setupPdfDownload(file, result, summaryData.summary);
-            } catch (e) {
-                const errorMessage = `Could not generate summary: ${e.message}`;
-                displayAnalysisContent(result, errorMessage);
-                setupPdfDownload(file, result, errorMessage);
-            }
-        }
+                const summary = summaryData.summary || "Summary not available.";
+                displayAnalysisContent(result, summary);
+                G('downloadPdf').onclick = () => generatePDFReport(file, result, summary);
+            };
 
-        function displayFilePreview(file) {
-            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-            filePreview.innerHTML = `
-                <h4 class="font-medium text-gray-700 mb-3">File Preview</h4>
-                <div class="p-4 bg-white rounded-lg shadow-sm h-64 overflow-y-auto flex items-center justify-center">
-                    <div class="text-center">
-                        <div class="w-16 h-16 ${getFileIcon(file.name, true)} rounded-lg flex items-center justify-center mx-auto mb-4">${getFileIcon(file.name)}</div>
-                        <h3 class="font-semibold text-lg">${file.name}</h3>
-                        <p class="text-gray-600">${fileSize} MB</p>
-                    </div>
-                </div>`;
-        }
-        
-        function displayAnalysisContent(result, summary) {
-            const tags = result.tags || [];
-            const primaryTag = result.primary_tag || 'miscellaneous';
-            const formattedSummary = summary.replace(/\* /g, '<li>').replace(/\n/g, '<br>').replace(/<\/li><br>/g, '</li>');
+            const displayFilePreview = (file) => {
+                filePreview.innerHTML = `
+                    <h4 class="font-medium mb-3">File Preview</h4>
+                    <div class="p-4 bg-white rounded-lg shadow-sm h-64 flex items-center justify-center text-center">
+                        <div>
+                            <div class="w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 ${getFileIcon(file.name, true)}">${getFileIcon(file.name)}</div>
+                            <h3 class="font-semibold">${file.name}</h3>
+                            <p>${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                    </div>`;
+            };
 
-            analysisContent.innerHTML = `
-                <div>
+            const displayAnalysisContent = (result, summary) => {
+                const tags = result.tags || [];
+                const formattedSummary = summary.replace(/\* /g, '<li>').replace(/\n/g, '<br>').replace(/<\/li><br>/g, '</li>');
+                analysisContent.innerHTML = `
                     <h4 class="font-semibold mb-2">AI Summary</h4>
-                    <div class="text-sm text-gray-400 mb-4">${formattedSummary.startsWith('<li>') ? `<ul>${formattedSummary}</ul>` : formattedSummary}</div>
+                    <div class="text-sm mb-4">${formattedSummary.startsWith('<li>') ? `<ul>${formattedSummary}</ul>` : formattedSummary}</div>
                     <h4 class="font-semibold mt-4 mb-2">Classification</h4>
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        ${tags.length ? tags.map(tag => `<span class="px-2 py-1 ${getCategoryColor(tag)} text-xs rounded-full">${tag.replace(/_/g, ' ')}</span>`).join('') : `<span class="px-2 py-1 ${getCategoryColor('miscellaneous')} text-xs rounded-full">miscellaneous</span>`}
-                    </div>
-                    <p class="text-sm text-gray-600">Assigned Department: <span class="font-medium">${getDepartmentName(primaryTag)}</span></p>
-                </div>`;
-        }
-
-        function setupPdfDownload(file, result, summary) {
-            downloadPdfBtn.onclick = () => generatePDFReport(file, result, summary);
-        }
-
-        function generatePDFReport(file, result, summary) {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.setFillColor(11, 60, 70).rect(0, 0, 220, 30, 'F');
-            doc.setFontSize(18).setTextColor(255, 223, 0).text('Kochi Metro Rail', 105, 18, { align: 'center' });
-            doc.setFontSize(12).setTextColor(255, 255, 255).text('Document Analysis Report', 105, 26, { align: 'center' });
-            doc.setFontSize(11).setTextColor(0, 0, 0).text(`File: ${file.name}`, 14, 48);
-            doc.setFontSize(10).setTextColor(80, 80, 80).text(`Generated on: ${new Date().toLocaleString()}`, 14, 54);
+                    <div class="flex flex-wrap gap-2">
+                        ${tags.map(tag => `<span class="px-2 py-1 ${getCategoryColor(tag)} text-xs rounded-full">${tag.replace(/_/g, ' ')}</span>`).join('') || `<span class="px-2 py-1 ${getCategoryColor('miscellaneous')} text-xs rounded-full">miscellaneous</span>`}
+                    </div>`;
+            };
             
-            doc.setFontSize(14).setTextColor(11, 60, 70).text('AI Summary', 14, 70);
-            doc.line(14, 72, 45, 72);
-            const summaryLines = doc.splitTextToSize(summary.replace(/\*/g, '-'), 180);
-            doc.setFontSize(10).setTextColor(0,0,0).text(summaryLines, 14, 80);
+            const generatePDFReport = (file, result, summary) => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                doc.setFillColor(11, 60, 70).rect(0, 0, 220, 30, 'F');
+                doc.setFontSize(18).setTextColor(255, 223, 0).text('Kochi Metro Rail', 105, 18, { align: 'center' });
+                doc.setFontSize(12).setTextColor(255, 255, 255).text('Document Analysis Report', 105, 26, { align: 'center' });
+                doc.setFontSize(11).setTextColor(0,0,0).text(`File: ${file.name}`, 14, 48);
+                doc.setFontSize(10).setTextColor(80,80,80).text(`Generated: ${new Date().toLocaleString()}`, 14, 54);
+                
+                doc.setFontSize(14).setTextColor(11,60,70).text('AI Summary', 14, 70);
+                doc.line(14, 72, 45, 72);
+                const summaryLines = doc.splitTextToSize(summary.replace(/\*/g, '-'), 180);
+                doc.setFontSize(10).setTextColor(0,0,0).text(summaryLines, 14, 80);
 
-            let yPos = 80 + (summaryLines.length * 5) + 10;
-            doc.setFontSize(14).setTextColor(11, 60, 70).text('Classification', 14, yPos);
-            doc.line(14, yPos+2, 55, yPos+2);
-            yPos += 10;
+                let yPos = 80 + (summaryLines.length * 5) + 10;
+                doc.setFontSize(14).setTextColor(11,60,70).text('Classification', 14, yPos);
+                doc.line(14, yPos+2, 55, yPos+2);
+                doc.setFontSize(11).text(`Primary Category: ${(result.primary_tag || 'misc').replace(/_/g, ' ')}`, 14, yPos += 10);
+                
+                doc.save(`Report_${file.name.replace(/\.[^/.]+$/, "")}.pdf`);
+            };
 
-            doc.setFontSize(11);
-            const primaryTag = result.primary_tag || 'miscellaneous';
-            doc.text(`Primary Category: ${primaryTag.replace(/_/g, ' ')}`, 14, yPos); yPos += 7;
-            doc.text(`Department: ${getDepartmentName(primaryTag)}`, 14, yPos); yPos += 7;
-            if (result.translated) { doc.text('Translation: Document was translated from Malayalam.', 14, yPos); }
+            const getDepartmentClass = c => ({ 'safety_reports': 'department-safety', 'invoices': 'department-finance', 'engineering_drawings': 'department-engineering', 'urgent': 'department-urgent', 'miscellaneous': 'department-general' })[c] || 'department-general';
+            const getCategoryColor = c => ({ 'safety_reports': 'bg-red-200 text-red-800', 'invoices': 'bg-green-200 text-green-800', 'engineering_drawings': 'bg-blue-200 text-blue-800', 'urgent': 'bg-yellow-200 text-yellow-800', 'miscellaneous': 'bg-purple-200 text-purple-800' })[c] || 'bg-purple-200 text-purple-800';
+            const getFileIcon = (filename, bgOnly = false) => {
+                const ext = filename?.split('.').pop().toLowerCase() || '';
+                const map = { 'pdf': ['fa-file-pdf', 'bg-red-100 text-red-600'], 'docx': ['fa-file-word', 'bg-blue-100 text-blue-600'], 'txt': ['fa-file-alt', 'bg-gray-100 text-gray-600'] };
+                const [icon, colorClass] = map[ext] || ['fa-file', 'bg-gray-100 text-gray-600'];
+                return bgOnly ? colorClass : `<i class="fas ${icon} text-2xl"></i>`;
+            };
 
-            const pageH = doc.internal.pageSize.height;
-            doc.setFontSize(9).setTextColor(100, 100, 100).text('Kochi Metro Rail Limited - Document Management System', 105, pageH - 10, { align: 'center' });
-            doc.save(`KDocAI_Report_${file.name.replace(/\.[^/.]+$/, "")}.pdf`);
-        }
-        
-        // --- UTILITY FUNCTIONS ---
-        function updateSectionTitle(category) { sectionTitle.textContent = ({ 'all': 'All Documents', 'safety_reports': 'Safety Reports', 'invoices': 'Invoices', 'engineering_drawings': 'Engineering', 'urgent': 'Urgent Documents', 'miscellaneous': 'Miscellaneous' })[category] || 'Documents'; }
-        function getDepartmentClass(category) { return ({ 'safety_reports': 'department-safety', 'invoices': 'department-finance', 'engineering_drawings': 'department-engineering', 'urgent': 'department-urgent', 'miscellaneous': 'department-general' })[category] || 'department-general'; }
-        function getCategoryColor(category) { return ({ 'safety_reports': 'bg-red-100 text-red-800', 'invoices': 'bg-green-100 text-green-800', 'engineering_drawings': 'bg-blue-100 text-blue-800', 'urgent': 'bg-yellow-100 text-yellow-800', 'miscellaneous': 'bg-purple-100 text-purple-800' })[category] || 'bg-purple-100 text-purple-800'; }
-        function getDepartmentName(tag) { return ({ 'invoices': 'Finance', 'safety_reports': 'Safety', 'urgent': 'Priority Management', 'engineering_drawings': 'Engineering' })[tag] || 'General Administration'; }
-        function getLoadingSpinner(message) { return `<div class="flex items-center justify-center h-full"><div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"></div><p class="mt-4 text-gray-600">${message}</p></div></div>`; }
-        function getFileIcon(filename, bgOnly = false) {
-            const ext = filename?.split('.').pop().toLowerCase() || '';
-            const map = { 'pdf': ['fa-file-pdf', 'bg-red-100 text-red-600'], 'doc': ['fa-file-word', 'bg-blue-100 text-blue-600'], 'docx': ['fa-file-word', 'bg-blue-100 text-blue-600'], 'txt': ['fa-file-alt', 'bg-yellow-100 text-yellow-600'] };
-            const [icon, colorClass] = map[ext] || ['fa-file', 'bg-gray-100 text-gray-600'];
-            return bgOnly ? colorClass : `<i class="fas ${icon} text-2xl"></i>`;
-        }
-        window.reprocessFile = reprocessFile;
+            const getLoadingSpinner = (message) => `<div class="flex items-center justify-center h-full text-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"></div><p class="mt-4">${message}</p></div>`;
+
+            G('menuToggle').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('active'));
+            uploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', e => handleFileUpload(e.target.files[0]));
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                uploadArea.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+                uploadArea.classList.toggle('dragover', ['dragover', 'dragenter'].includes(evt));
+            });
+            uploadArea.addEventListener('drop', e => handleFileUpload(e.dataTransfer.files[0]));
+            document.querySelectorAll('.category-link').forEach(link => link.addEventListener('click', e => { e.preventDefault(); loadFiles(); }));
+
+            loadFiles();
+        });
     </script>
 </body>
 </html>

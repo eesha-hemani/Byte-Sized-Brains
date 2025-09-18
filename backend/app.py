@@ -18,18 +18,12 @@ load_dotenv()
 DetectorFactory.seed = 0
 
 # --- NLTK Downloader ---
-# This ensures the necessary data packages are available on startup.
 try:
     nltk.data.find('tokenizers/punkt')
-except LookupError:
-    print("NLTK 'punkt' tokenizer not found. Downloading...")
-    nltk.download('punkt', quiet=True)
-    print("Download complete.")
-
-try:
     nltk.data.find('corpora/stopwords')
 except LookupError:
-    print("NLTK 'stopwords' corpus not found. Downloading...")
+    print("Downloading NLTK data packages ('punkt', 'stopwords')...")
+    nltk.download('punkt', quiet=True)
     nltk.download('stopwords', quiet=True)
     print("Download complete.")
 
@@ -40,14 +34,8 @@ DB_NAME = os.getenv("MONGO_DB", "kmrl_docs")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 
-app = Flask(
-    __name__,
-    static_folder=FRONTEND_DIR,
-    static_url_path="",
-    template_folder=FRONTEND_DIR
-)
-CORS(app, supports_credentials=True)
-
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="", template_folder=FRONTEND_DIR)
+CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -62,62 +50,38 @@ except Exception as e:
     logger.error(f"Could not connect to MongoDB: {e}")
     exit(1)
 
-# ---------- NEW ROBUST SUMMARIZER ----------
+# ---------- ROBUST SUMMARIZER ----------
 def generate_robust_summary(text, sentences_count=5):
-    if not text or not isinstance(text, str):
-        return "No text content to summarize."
-
+    if not text or not isinstance(text, str): return "No text to summarize."
     try:
         sentences = sent_tokenize(text)
-        
-        # Guardrail: If the document is short, return the whole text.
         if len(sentences) <= sentences_count:
             return "\n".join([f"* {s.strip()}" for s in sentences])
 
         stop_words = set(stopwords.words('english'))
-        words = [word.lower() for word in word_tokenize(text) if word.isalpha() and word.lower() not in stop_words]
-        
-        if not words:
-            return "Document contains no summarizable content."
+        words = [w.lower() for w in word_tokenize(text) if w.isalpha() and w.lower() not in stop_words]
+        if not words: return "No summarizable content."
 
         word_freq = Counter(words)
         max_freq = word_freq.most_common(1)[0][1]
-        
-        # Normalize frequencies
-        for word in word_freq:
-            word_freq[word] = (word_freq[word] / max_freq)
+        for word in word_freq: word_freq[word] /= max_freq
 
-        # Score sentences based on word frequencies
-        sentence_scores = {}
-        for sent in sentences:
-            sent_words = [word.lower() for word in word_tokenize(sent) if word.isalpha()]
-            score = sum(word_freq.get(word, 0) for word in sent_words)
-            if len(sent_words) > 0:
-                 sentence_scores[sent] = score
-
-        # Get the top sentences
-        sorted_sentences = sorted(sentence_scores, key=sentence_scores.get, reverse=True)
-        summary_sentences = sorted_sentences[:sentences_count]
-        
-        summary = "\n".join([f"* {s.strip()}" for s in summary_sentences])
-        return summary
-
-    except Exception as e:
-        logger.error(f"Robust summarization failed: {traceback.format_exc()}")
-        return "Could not generate summary due to an internal processing error."
-
+        sentence_scores = {sent: sum(word_freq.get(w.lower(), 0) for w in word_tokenize(sent) if w.isalpha()) for sent in sentences}
+        summary_sentences = sorted(sentence_scores, key=sentence_scores.get, reverse=True)[:sentences_count]
+        return "\n".join([f"* {s.strip()}" for s in summary_sentences])
+    except Exception:
+        logger.error(f"Summarization failed: {traceback.format_exc()}")
+        return "Could not generate summary due to an internal error."
 
 # ---------- HELPER FUNCTIONS ----------
 def oid_to_str(o): return str(o) if o is not None else None
 def save_file_to_gridfs(file_bytes, filename, content_type): return fs.put(file_bytes, filename=filename, contentType=content_type)
 
 def insert_metadata(filename, gridfs_id, content_type, uploaded_by, **kwargs):
-    doc = {
+    return files_col.insert_one({
         "filename": filename, "gridfs_id": gridfs_id, "content_type": content_type,
-        "uploaded_by": uploaded_by, "uploaded_at": datetime.datetime.utcnow(),
-        **kwargs
-    }
-    return files_col.insert_one(doc).inserted_id
+        "uploaded_by": uploaded_by, "uploaded_at": datetime.datetime.utcnow(), **kwargs
+    }).inserted_id
 
 def extract_text(file_bytes, filename, filetype_hint=None):
     ext = os.path.splitext(filename.lower())[1]
@@ -133,68 +97,58 @@ def extract_text(file_bytes, filename, filetype_hint=None):
             text = file_bytes.decode("utf-8", errors="ignore")
     except Exception as e:
         logger.warning(f"Text extraction failed for {filename}: {e}")
-        return ""
     return text.strip()
 
 def is_malayalam(text):
     if not text: return False
-    try:
-        return detect(text) == 'ml'
-    except LangDetectException:
-        return False
+    try: return detect(text) == 'ml'
+    except LangDetectException: return False
 
 def translate_ml_to_en(text):
     if not text: return ""
-    try:
-        return GTranslator().translate(text, src='ml', dest='en').text
+    try: return GTranslator().translate(text, src='ml', dest='en').text
     except Exception as e:
         logger.warning(f"Translation failed: {e}")
         return text
 
 # ---------- CORE PROCESSING PIPELINE ----------
 def process_and_store(file_bytes, filename, filetype, uploaded_by="anonymous"):
-    # 1. Save original file and create metadata record
     grid_id = save_file_to_gridfs(file_bytes, filename, filetype)
-    meta_id = insert_metadata(filename, grid_id, filetype, uploaded_by, source_type="upload")
+    meta_id = insert_metadata(filename, grid_id, filetype, uploaded_by)
 
-    # 2. Extract text from the document
     extracted_text = extract_text(file_bytes, filename, filetype)
     if not extracted_text:
-        files_col.update_one({"_id": meta_id}, {"$set": {"translation_status": "no_extractable_text"}})
-        return {"original_meta_id": oid_to_str(meta_id), "translated": False}
+        files_col.update_one({"_id": meta_id}, {"$set": {"status": "error_no_text"}})
+        return {"original_meta_id": oid_to_str(meta_id), "summary_meta_id": oid_to_str(meta_id), "translated": False}
 
-    # 3. Check for Malayalam and translate if necessary
     if is_malayalam(extracted_text):
         translated_text = translate_ml_to_en(extracted_text)
         trans_filename = os.path.splitext(filename)[0] + "_translated.txt"
-        
-        # THIS IS WHERE THE TRANSLATED FILE IS SAVED
         trans_grid_id = save_file_to_gridfs(translated_text.encode("utf-8"), trans_filename, "text/plain")
         trans_meta_id = insert_metadata(trans_filename, trans_grid_id, "text/plain", "system", parent_id=meta_id, language="en")
         
-        files_col.update_one({"_id": meta_id}, {"$set": {"translation_status": "translated", "language": "ml"}})
-        text_to_classify = translated_text
+        files_col.update_one({"_id": meta_id}, {"$set": {"status": "translated", "language": "ml"}})
+        text_to_process = translated_text
         final_meta_id = trans_meta_id
     else:
-        files_col.update_one({"_id": meta_id}, {"$set": {"translation_status": "not_needed", "language": "en"}})
-        text_to_classify = extracted_text
+        files_col.update_one({"_id": meta_id}, {"$set": {"status": "processed", "language": "en"}})
+        text_to_process = extracted_text
         final_meta_id = meta_id
 
-    # 4. Classify the final English text
-    tags, _ = classify_by_rules(text_to_classify)
+    tags, _ = classify_by_rules(text_to_process)
     files_col.update_one({"_id": final_meta_id}, {"$set": {
-        "tags": tags, "category": tags[0] if tags else 'miscellaneous',
-        "classification_status": "completed"
+        "tags": tags, "category": tags[0] if tags else 'miscellaneous'
     }})
     
     return {
         "original_meta_id": oid_to_str(meta_id),
+        "summary_meta_id": oid_to_str(final_meta_id), # Explicitly provide the ID to summarize
         "translated": final_meta_id != meta_id,
-        "translation_meta_id": oid_to_str(final_meta_id) if final_meta_id != meta_id else None,
+        "translation_meta_id": oid_to_str(trans_meta_id) if 'trans_meta_id' in locals() else None,
         "tags": tags, "primary_tag": tags[0] if tags else 'miscellaneous'
     }
 
-# ---------- RULES-BASED CLASSIFICATION ----------
+# ---------- CLASSIFICATION ----------
 CATEGORIES = {
     'invoices': ['invoice', 'bill', 'payment', 'amount', 'total', 'due', 'rs', 'tax', 'gst', 'receipt'],
     'safety_reports': ['safety', 'audit', 'risk', 'hazard', 'compliance', 'incident', 'accident', 'inspection'],
@@ -205,8 +159,8 @@ def classify_by_rules(text):
     if not text: return ['miscellaneous'], {}
     text_lower = text.lower()
     scores = {cat: sum(1 for kw in kws if kw in text_lower) for cat, kws in CATEGORIES.items()}
-    tags = sorted([cat for cat, score in scores.items() if score > 0], key=lambda t: scores[t], reverse=True)
-    return tags if tags else ['miscellaneous'], scores
+    tags = sorted([cat for cat, s in scores.items() if s > 0], key=scores.get, reverse=True)
+    return tags or ['miscellaneous'], scores
 
 # ---------- API ROUTES ----------
 @app.route('/', defaults={'path': 'home.html'})
@@ -218,11 +172,10 @@ def serve_frontend(path):
 def upload_route():
     if "file" not in request.files: return jsonify({"error": "no file part"}), 400
     f = request.files["file"]
-    if f.filename == "": return jsonify({"error": "no selected file"}), 400
     try:
         res = process_and_store(f.read(), f.filename, f.mimetype)
         return jsonify(res), 201
-    except Exception as e:
+    except Exception:
         logger.error(f"Upload failed: {traceback.format_exc()}")
         return jsonify({"error": "processing failed"}), 500
 
@@ -232,18 +185,14 @@ def get_summary_route(meta_id):
         meta = files_col.find_one({"_id": ObjectId(meta_id)})
         if not meta: return jsonify({"error": "not_found"}), 404
         
-        # If original was ML, get summary from the translated child
-        if meta.get("translation_status") == "translated":
-            child = files_col.find_one({"parent_id": meta["_id"]})
-            if child: meta = child
-
+        # This route is now simpler. It just gets the text from the provided ID.
         grid_id = meta.get("gridfs_id")
         if not grid_id or not fs.exists(grid_id): return jsonify({"error": "file not in storage"}), 404
 
         text = fs.get(grid_id).read().decode('utf-8', 'ignore')
         summary = generate_robust_summary(text)
         return jsonify({"summary": summary})
-    except Exception as e:
+    except Exception:
         logger.error(f"Summary route failed for {meta_id}: {traceback.format_exc()}")
         return jsonify({"error": "summary generation failed"}), 500
 
@@ -251,20 +200,16 @@ def get_summary_route(meta_id):
 def list_files_route():
     out = []
     for r in files_col.find({"parent_id": None}).sort("uploaded_at", -1):
-        item = {
-            "meta_id": oid_to_str(r["_id"]),
-            "filename": r.get("filename"),
-            "uploaded_at": r.get("uploaded_at").isoformat() if r.get("uploaded_at") else None,
-            "category": "processing...",
-            "has_translation": False
-        }
-        if r.get("translation_status") == "translated":
-            child = files_col.find_one({"parent_id": r["_id"]})
-            if child:
-                item["category"] = child.get("category", "miscellaneous")
-                item["has_translation"] = True
-                item["translation_meta_id"] = oid_to_str(child["_id"])
-        elif r.get("language") == "en":
+        item = { "meta_id": oid_to_str(r["_id"]), "filename": r.get("filename"),
+                 "uploaded_at": r.get("uploaded_at").isoformat(), "category": "processing...",
+                 "has_translation": False }
+        
+        child = files_col.find_one({"parent_id": r["_id"]})
+        if child:
+            item["category"] = child.get("category", "miscellaneous")
+            item["has_translation"] = True
+            item["translation_meta_id"] = oid_to_str(child["_id"])
+        elif r.get("language") != "ml":
              item["category"] = r.get("category", "miscellaneous")
         out.append(item)
     return jsonify(out)
@@ -276,8 +221,8 @@ def download_route(meta_id):
         if not meta: return jsonify({"error": "not_found"}), 404
         gf = fs.get(meta["gridfs_id"])
         return send_file(io.BytesIO(gf.read()), mimetype=meta.get("content_type"), as_attachment=True, download_name=meta.get("filename"))
-    except Exception as e:
-        logger.error(f"Download failed for {meta_id}: {e}")
+    except Exception:
+        logger.error(f"Download failed for {meta_id}: {traceback.format_exc()}")
         return jsonify({"error": "download failed"}), 500
 
 if __name__ == "__main__":
