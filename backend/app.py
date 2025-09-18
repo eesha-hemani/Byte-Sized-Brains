@@ -142,7 +142,7 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by="anonymous"):
     
     return {
         "original_meta_id": oid_to_str(meta_id),
-        "summary_meta_id": oid_to_str(final_meta_id), # Explicitly provide the ID to summarize
+        "summary_meta_id": oid_to_str(final_meta_id),
         "translated": final_meta_id != meta_id,
         "translation_meta_id": oid_to_str(trans_meta_id) if 'trans_meta_id' in locals() else None,
         "tags": tags, "primary_tag": tags[0] if tags else 'miscellaneous'
@@ -185,7 +185,6 @@ def get_summary_route(meta_id):
         meta = files_col.find_one({"_id": ObjectId(meta_id)})
         if not meta: return jsonify({"error": "not_found"}), 404
         
-        # This route is now simpler. It just gets the text from the provided ID.
         grid_id = meta.get("gridfs_id")
         if not grid_id or not fs.exists(grid_id): return jsonify({"error": "file not in storage"}), 404
 
@@ -213,6 +212,46 @@ def list_files_route():
              item["category"] = r.get("category", "miscellaneous")
         out.append(item)
     return jsonify(out)
+
+@app.route("/search-by-tag/<tag>", methods=["GET"])
+def search_by_tag_route(tag):
+    try:
+        parent_ids_from_children = set()
+        child_docs_with_tag = files_col.find({"tags": tag, "parent_id": {"$ne": None}})
+        for child in child_docs_with_tag:
+            if child.get("parent_id"):
+                parent_ids_from_children.add(child["parent_id"])
+
+        original_docs_with_tag_cursor = files_col.find({"tags": tag, "parent_id": None})
+        original_ids = {doc["_id"] for doc in original_docs_with_tag_cursor}
+        
+        all_relevant_ids = list(parent_ids_from_children.union(original_ids))
+
+        if not all_relevant_ids:
+            return jsonify({"documents": []})
+
+        documents = list(files_col.find({"_id": {"$in": all_relevant_ids}}).sort("uploaded_at", -1))
+        
+        output_docs = []
+        for r in documents:
+            item = { "meta_id": oid_to_str(r["_id"]), "filename": r.get("filename"),
+                     "uploaded_at": r.get("uploaded_at").isoformat(), "category": "processing...",
+                     "has_translation": False }
+            
+            child = files_col.find_one({"parent_id": r["_id"]})
+            if child:
+                item["category"] = child.get("category", "miscellaneous")
+                item["has_translation"] = True
+                item["translation_meta_id"] = oid_to_str(child["_id"])
+            elif r.get("language") != "ml":
+                if tag in r.get("tags", []):
+                    item["category"] = r.get("category", "miscellaneous")
+            output_docs.append(item)
+            
+        return jsonify({"documents": output_docs})
+    except Exception:
+        logger.error(f"Search by tag failed for {tag}: {traceback.format_exc()}")
+        return jsonify({"error": "search failed"}), 500
 
 @app.route("/download/<meta_id>", methods=["GET"])
 def download_route(meta_id):

@@ -50,7 +50,6 @@
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
-    <!-- UI Structure -->
     <header class="bg-white shadow-sm flex-shrink-0">
         <div class="flex items-center justify-between px-6 py-3">
             <div class="flex items-center">
@@ -86,14 +85,27 @@
             const uploadArea = G('uploadArea'), fileInput = G('fileInput');
             const previewSection = G('previewSection'), filePreview = G('filePreview'), analysisContent = G('analysisContent');
             const progressContainer = G('progressContainer'), progressBar = G('progressBar');
-            const filesTableBody = G('filesTableBody');
+            const filesTableBody = G('filesTableBody'), sectionTitle = G('sectionTitle');
             
-            const loadFiles = async () => {
+            const updateSectionTitle = (category) => {
+                const titles = {
+                    'all': 'All Documents', 'invoices': 'Invoices', 'safety_reports': 'Safety Reports',
+                    'engineering_drawings': 'Engineering Drawings', 'urgent': 'Urgent Documents', 'miscellaneous': 'Miscellaneous'
+                };
+                sectionTitle.textContent = titles[category] || 'Documents';
+            };
+
+            const loadFilesByCategory = async (category) => {
+                const url = (category === 'all') ? '/files' : `/search-by-tag/${category}`;
                 try {
-                    const response = await fetch('/files');
-                    const files = await response.json();
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    const files = category === 'all' ? data : data.documents;
                     displayFiles(files);
+                    updateSectionTitle(category);
                 } catch (error) {
+                    console.error("Error loading files:", error);
                     filesTableBody.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 p-4">Error loading files.</td></tr>`;
                 }
             };
@@ -121,53 +133,55 @@
                 }).join('');
             };
 
-            const handleFileUpload = async (file) => {
+            const handleFileUpload = (file) => {
                 if (!file) return;
                 progressContainer.style.display = 'block';
                 progressBar.style.width = '0%';
                 previewSection.classList.remove('hidden');
                 filePreview.innerHTML = getLoadingSpinner('Preparing...');
-                analysisContent.innerHTML = getLoadingSpinner('Uploading...');
+                analysisContent.innerHTML = getLoadingSpinner('Uploading & Processing...');
                 
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                try {
-                    const xhr = new XMLHttpRequest();
-                    xhr.upload.onprogress = e => e.lengthComputable && (progressBar.style.width = `${(e.loaded / e.total) * 100}%`);
-                    xhr.open('POST', '/upload', true);
-                    xhr.onload = async () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
+                const xhr = new XMLHttpRequest();
+                xhr.upload.onprogress = e => e.lengthComputable && (progressBar.style.width = `${(e.loaded / e.total) * 100}%`);
+                xhr.open('POST', '/upload', true);
+                xhr.onload = async () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
                             const result = JSON.parse(xhr.responseText);
                             await displayUploadResults(file, result);
-                            loadFiles();
-                        } else {
-                            analysisContent.innerHTML = `<p class="text-red-500">Upload failed: ${xhr.statusText}</p>`;
+                            loadFilesByCategory('all');
+                        } catch(e) {
+                             analysisContent.innerHTML = `<p class="text-red-500">Error parsing server response.</p>`;
                         }
-                        setTimeout(() => progressContainer.style.display = 'none', 1000);
-                    };
-                    xhr.onerror = () => { analysisContent.innerHTML = `<p class="text-red-500">A network error occurred.</p>`; };
-                    xhr.send(formData);
-                } catch (error) {
-                    analysisContent.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-                }
+                    } else {
+                        analysisContent.innerHTML = `<p class="text-red-500">Upload failed: ${xhr.statusText}</p>`;
+                    }
+                    setTimeout(() => progressContainer.style.display = 'none', 1000);
+                };
+                xhr.onerror = () => { analysisContent.innerHTML = `<p class="text-red-500">A network error occurred.</p>`; };
+                xhr.send(formData);
             };
             
             const displayUploadResults = async (file, result) => {
                 displayFilePreview(file);
                 analysisContent.innerHTML = getLoadingSpinner('Generating summary...');
+                const metaIdToSummarize = result.summary_meta_id;
                 
-                // *** THIS IS THE FIX ***
-                // Always use the original_meta_id. The backend is smart enough to find
-                // the translated text if it exists. This simplifies the logic and makes it more reliable.
-                const metaIdToSummarize = result.original_meta_id;
-                
-                const summaryRes = await fetch(`/summary/${metaIdToSummarize}`);
-                const summaryData = await summaryRes.json();
-                
-                const summary = summaryData.summary || "Summary not available.";
-                displayAnalysisContent(result, summary);
-                G('downloadPdf').onclick = () => generatePDFReport(file, result, summary);
+                try {
+                    const summaryRes = await fetch(`/summary/${metaIdToSummarize}`);
+                    if (!summaryRes.ok) throw new Error(`Server returned status: ${summaryRes.status}`);
+                    const summaryData = await summaryRes.json();
+                    
+                    const summary = summaryData.summary || "Summary not available.";
+                    displayAnalysisContent(result, summary);
+                    G('downloadPdf').onclick = () => generatePDFReport(file, result, summary);
+                } catch (error) {
+                    console.error("Error fetching summary:", error);
+                    analysisContent.innerHTML = `<p class="text-red-500">Could not fetch summary.</p>`;
+                }
             };
 
             const displayFilePreview = (file) => {
@@ -235,11 +249,19 @@
                 uploadArea.classList.toggle('dragover', ['dragover', 'dragenter'].includes(evt));
             });
             uploadArea.addEventListener('drop', e => handleFileUpload(e.dataTransfer.files[0]));
-            document.querySelectorAll('.category-link').forEach(link => link.addEventListener('click', e => { e.preventDefault(); loadFiles(); }));
+            
+            document.querySelectorAll('.category-link').forEach(link => {
+                link.addEventListener('click', e => {
+                    e.preventDefault();
+                    document.querySelectorAll('.category-link').forEach(l => l.classList.remove('bg-blue-50'));
+                    link.classList.add('bg-blue-50');
+                    const category = link.dataset.category;
+                    loadFilesByCategory(category);
+                });
+            });
 
-            loadFiles();
+            loadFilesByCategory('all');
         });
     </script>
 </body>
 </html>
-
