@@ -526,292 +526,388 @@
         });
 
         // Handle file upload and analysis
-        function handleFileUpload(file) {
+        async function apiFetch(path, opts = {}) {
+            opts.headers = opts.headers || {};
+            const token = localStorage.getItem('access_token');
+            if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+            opts.credentials = 'include';
+
+            let res = await fetch(path, opts);
+
+            // try refresh once on 401
+            if (res.status === 401) {
+                try {
+                const r = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
+                if (r.ok) {
+                    const data = await r.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    opts.headers['Authorization'] = 'Bearer ' + data.access_token;
+                    res = await fetch(path, opts);
+                }
+                } catch (e) {
+                // ignore refresh errors
+                console.warn('refresh failed', e);
+                }
+            }
+            return res;
+            }
+
+            /* -----------------------
+            Upload file to backend: POST /ingest/upload (multipart/form-data)
+            Expects JSON response { success: true, meta_id: "<id>" }
+            ------------------------*/
+            async function uploadToServer(file, onProgress) {
+            const fd = new FormData();
+            fd.append('file', file, file.name);
+
+            // use XMLHttpRequest to allow progress callback
+            return await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/ingest/upload', true);
+                xhr.withCredentials = true; // ensure cookies sent/received
+
+                xhr.upload.onprogress = (ev) => {
+                if (ev.lengthComputable && typeof onProgress === 'function') {
+                    onProgress(Math.round((ev.loaded / ev.total) * 100));
+                }
+                };
+
+                xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                    const json = JSON.parse(xhr.responseText);
+                    resolve(json);
+                    } catch (e) {
+                    reject(new Error('Invalid JSON response from server'));
+                    }
+                } else {
+                    reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}\n${xhr.responseText}`));
+                }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.send(fd);
+            });
+            }
+
+            /* -----------------------
+            Main file handler: upload -> trigger classify -> poll status -> display result
+            ------------------------*/
+            async function handleFileUpload(file) {
             if (!file) return;
-            
-            // Show loading state
+
+            // show preview loading
             filePreview.innerHTML = `
                 <div class="flex items-center justify-center h-full">
                     <div class="text-center">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p class="mt-4 text-gray-600">Loading file preview...</p>
+                        <p class="mt-4 text-gray-600">Preparing file for upload...</p>
                     </div>
                 </div>
             `;
-            
             summaryContent.innerHTML = `
                 <div class="flex items-center justify-center h-full">
                     <div class="text-center">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p class="mt-4 text-gray-600">Analyzing document...</p>
+                        <p class="mt-4 text-gray-600">Uploading and analyzing document...</p>
                     </div>
                 </div>
             `;
-            
             previewSection.classList.remove('hidden');
-            
-            // Scroll to preview section
             previewSection.scrollIntoView({ behavior: 'smooth' });
-            
-            // Simulate API call delay
-            setTimeout(() => {
-                // Display file preview based on type
-                if (file.type === 'application/pdf') {
-                    filePreview.innerHTML = `
-                        <div class="text-center py-8">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
-                            <p class="text-gray-600">PDF Document</p>
-                            <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                    `;
-                } else if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        filePreview.innerHTML = `
-                            <div class="text-center">
-                                <img src="${e.target.result}" alt="${file.name}" class="max-h-52 mx-auto rounded-lg">
-                                <h3 class="font-semibold text-lg text-gray-800 mt-4">${file.name}</h3>
-                                <p class="text-gray-600">Image File</p>
-                            </div>
-                        `;
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    filePreview.innerHTML = `
-                        <div class="text-center py-8">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
-                            <p class="text-gray-600">Document</p>
-                            <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                    `;
+
+            // wire progress UI if sidebar/file upload also tries to show it
+            const progressBarContainer = document.getElementById('progress');
+            const progressBar = document.getElementById('bar');
+            if (progressBarContainer) progressBarContainer.style.display = 'block';
+            if (progressBar) progressBar.style.width = '0%';
+
+            try {
+                // Upload
+                const uploadResp = await uploadToServer(file, (pct) => {
+                if (progressBar) progressBar.style.width = pct + '%';
+                });
+
+                if (!uploadResp || !uploadResp.meta_id) {
+                // no meta_id returned — fallback to simulation
+                console.warn('upload returned no meta_id, falling back to local analysis', uploadResp);
+                if (progressBarContainer) progressBarContainer.style.display = 'none';
+                simulateAnalysis(file); // use your existing simulated analysis UI
+                return;
                 }
-                
-                // Simulate AI analysis based on filename and type
+
+                const metaId = uploadResp.meta_id;
+
+                // immediately try to trigger reprocess / classify using server endpoints
+                // call server-side reprocess/classify endpoints (they may already be triggered by upload route)
+                await Promise.allSettled([
+                apiFetch('/reprocess/' + encodeURIComponent(metaId), { method: 'POST' }),
+                apiFetch('/classify/' + encodeURIComponent(metaId), { method: 'POST' })
+                ]);
+
+                if (progressBarContainer) progressBarContainer.style.display = 'none';
+
+                // poll for classification status & result
+                await pollStatus(metaId, file);
+
+            } catch (err) {
+                console.error('Upload/analysis error', err);
+                if (document.getElementById('uploadStatus')) {
+                document.getElementById('uploadStatus').style.display = 'block';
+                document.getElementById('uploadStatus').textContent = 'Upload failed: ' + err.message;
+                } else {
+                alert('Upload failed: ' + err.message);
+                }
+                // fall back to simulation so user sees something
                 simulateAnalysis(file);
-            }, 2000);
-        }
-
-        // Simulate AI analysis
-        function simulateAnalysis(file) {
-            let department = "General Administration";
-            let keywords = [];
-            let summaryPoints = [];
-            let detailedSummary = "";
-            
-            // Simple logic to determine department based on filename
-            if (file.name.toLowerCase().includes('safety')) {
-                department = "Safety Department";
-                keywords = ["safety", "audit", "protocol", "compliance", "incident", "prevention"];
-                summaryPoints = [
-                    "Safety audit conducted for all metro stations and facilities",
-                    "Identified 12 critical areas requiring immediate attention",
-                    "Incident reports show 23% reduction in safety violations",
-                    "New safety protocols implemented for electrical systems",
-                    "Emergency response time improved by 18%",
-                    "Staff training completion rate at 92% across all departments",
-                    "Recommendations for additional safety signage at 5 stations",
-                    "Quarterly safety drills scheduled for next fiscal year"
-                ];
-                detailedSummary = `This comprehensive safety audit report for Kochi Metro covers all operational aspects including station safety, train operations, and construction site compliance with national safety standards. The audit was conducted over a period of three months and involved detailed inspections of all 24 metro stations, maintenance facilities, and ongoing construction sites.
-
-Key findings indicate significant improvements in overall safety compliance compared to the previous year, with a notable 23% reduction in safety violations. However, the audit identified 12 critical areas that require immediate attention, particularly in electrical systems and emergency evacuation procedures.
-
-The report includes detailed recommendations for addressing these issues, including the implementation of enhanced safety protocols, additional staff training programs, and infrastructure improvements. A timeline of 6 months has been proposed for implementing all critical recommendations.
-
-The audit also praises the 18% improvement in emergency response times and the 92% staff training completion rate, while suggesting measures to achieve 100% compliance in training programs.`;
-            } else if (file.name.toLowerCase().includes('financial') || file.name.toLowerCase().includes('budget')) {
-                department = "Finance Department";
-                keywords = ["financial", "budget", "expenditure", "revenue", "forecast", "investment"];
-                summaryPoints = [
-                    "Q3 revenue exceeded projections by 8.2%",
-                    "Operational expenses 5% under budget",
-                    "Ticket sales revenue increased by 12% year-over-year",
-                    "Advertising revenue reached ₹4.5 crore",
-                    "Maintenance costs increased by 7% due to new stations",
-                    "Capital expenditure approved for Phase 2 expansion",
-                    "Profit margin improved to 18.3% from 15.6%",
-                    "FY2024 budget forecast projects 15% growth"
-                ];
-                detailedSummary = `This financial report provides a comprehensive overview of Kochi Metro's financial performance for the third quarter of the fiscal year. The report highlights that revenue has exceeded projections by 8.2%, primarily driven by a 12% increase in ticket sales and strong performance in advertising revenue, which reached ₹4.5 crore.
-
-Operational expenses were maintained at 5% under budget, demonstrating effective cost management despite the challenges of operating new stations. However, maintenance costs saw a 7% increase due to the addition of five new stations to the network.
-
-The report includes detailed budget allocations for the upcoming Phase 2 expansion, with capital expenditure approved by the board. Profit margins have improved significantly from 15.6% to 18.3%, reflecting improved operational efficiency.
-
-The FY2024 budget forecast projects a 15% growth in overall revenue, with strategic investments planned in digital infrastructure and customer experience enhancements.`;
-            } else if (file.name.toLowerCase().includes('construction') || file.name.toLowerCase().includes('design')) {
-                department = "Engineering Department";
-                keywords = ["construction", "design", "blueprint", "infrastructure", "timeline", "materials"];
-                summaryPoints = [
-                    "Phase 2 expansion includes 8 new stations",
-                    "Construction timeline set for 28 months completion",
-                    "90% of land acquisition completed for new routes",
-                    "Sustainable building materials selected for all stations",
-                    "Accessibility features exceed national standards",
-                    "Tunnel boring progress at 42% completion",
-                    "Structural design approved for earthquake zone compliance",
-                    "Integration with multi-modal transport hub planned"
-                ];
-                detailedSummary = `This engineering document outlines the detailed plans for Kochi Metro's Phase 2 expansion, which includes the construction of 8 new stations and extending the current network by 15.2 kilometers. The project timeline is set for completion in 28 months, with progress already at 15% since groundbreaking six months ago.
-
-The report highlights that 90% of land acquisition has been completed for the new routes, with remaining acquisitions expected to be finalized within the next quarter. Sustainable building materials have been selected for all stations, aiming for LEED certification for at least 5 of the 8 new stations.
-
-Notably, the accessibility features designed for the new stations exceed national standards, with provisions for visually impaired, mobility challenged, and elderly passengers. Tunnel boring progress is currently at 42% completion, ahead of schedule by approximately three weeks.
-
-The structural design has been approved for compliance with earthquake zone requirements, with additional safety factors incorporated beyond minimum requirements. The expansion also includes plans for integration with a multi-modal transport hub, facilitating seamless connectivity with other transportation options.`;
-            } else if (file.name.toLowerCase().includes('public') || file.name.toLowerCase().includes('press')) {
-                department = "Public Relations Department";
-                keywords = ["public", "announcement", "press", "communication", "campaign", "outreach"];
-                summaryPoints = [
-                    "Press kit prepared for Phase 2 launch event",
-                    "Media outreach to 45+ publications and channels",
-                    "Social media campaign reached 2.1 million impressions",
-                    "Community feedback sessions scheduled at 6 locations",
-                    "Multilingual materials created in Malayalam, English, and Hindi",
-                    "Stakeholder interviews arranged with key personnel",
-                    "Crisis communication protocol updated and tested",
-                    "Positive sentiment analysis shows 87% favorable coverage"
-                ];
-                detailedSummary = `This public relations document comprises the comprehensive press kit and communication strategy for the upcoming launch of Kochi Metro's Phase 2 expansion. The kit includes key messaging, spokesperson biographies, press conference schedules, and media contact information.
-
-The PR campaign has already secured media outreach to over 45 publications and channels, including national newspapers, local media, and industry-specific publications. The accompanying social media campaign has achieved 2.1 million impressions in the pre-launch phase, with engagement rates exceeding industry benchmarks.
-
-Community feedback sessions have been scheduled at six locations along the new route to address public concerns and gather input. All materials have been created in three languages: Malayalam, English, and Hindi, to ensure comprehensive coverage of Kochi's diverse population.
-
-The document also includes updated crisis communication protocols that have been tested through simulation exercises. Sentiment analysis of recent media coverage shows 87% favorable coverage, indicating strong public support for the expansion project.`;
-            } else {
-                keywords = ["general", "administration", "operations", "management", "policy", "procedures"];
-                summaryPoints = [
-                    "Updated operational guidelines for all departments",
-                    "New HR policies implemented effective next quarter",
-                    "IT infrastructure upgrade scheduled for Q2",
-                    "Vendor management procedures streamlined",
-                    "Document retention policy revised per new regulations",
-                    "Inter-departmental communication protocols established",
-                    "Performance metrics updated to align with organizational goals",
-                    "Compliance checklist created for audit preparation"
-                ];
-                detailedSummary = `This general administration document outlines updated operational guidelines and policy changes affecting all departments within Kochi Metro. The comprehensive update includes revisions to HR policies, which will become effective next quarter, and details regarding the scheduled IT infrastructure upgrade in Q2.
-
-Significant improvements have been made in vendor management procedures, reducing processing time by approximately 30% while maintaining compliance standards. The document retention policy has been revised to align with new regulatory requirements, with implementation scheduled over a six-month transition period.
-
-The document establishes new inter-departmental communication protocols designed to improve coordination between operational units and support functions. Performance metrics have been updated to better align with organizational goals, focusing on both efficiency and customer satisfaction indicators.
-
-A comprehensive compliance checklist has been created to facilitate audit preparation, with department-specific requirements clearly outlined. These administrative improvements are expected to enhance operational efficiency while maintaining rigorous compliance standards.`;
             }
-            
-            // Display the analysis results with concise bullet points
+            }
+
+            /* -----------------------
+            Poll /classification-status?meta_id=<id> every 2.5s until done
+            Expected server JSON (example):
+            {
+                success: true,
+                status: "processing" | "done" | "failed",
+                tags: ["safety","audit"],
+                primary_tag: "safety",
+                summary_points: [...],          // optional, recommended
+                detailed_summary: "....",      // optional
+                assigned_department: "Safety Department",
+                extracted_text: "...",         // optional
+                other: { ... }
+            }
+            ------------------------*/
+            async function pollStatus(metaId, originalFile) {
+            const output = document.getElementById('segResult');
+            output.textContent = 'Polling status...';
+
+            const poll = async () => {
+                try {
+                const res = await apiFetch('/classification-status?meta_id=' + encodeURIComponent(metaId), { method: 'GET' });
+                if (!res.ok) {
+                    // server returned error: show and stop polling
+                    const txt = await res.text().catch(() => '');
+                    output.textContent = `Status fetch error: ${res.status} ${txt}`;
+                    clearInterval(pollInterval);
+                    return;
+                }
+                const json = await res.json().catch(() => ({}));
+                const status = json.status || (json.success ? 'done' : 'processing');
+                // Display some summary in segResult
+                output.textContent = `Status: ${status}\n\n` + JSON.stringify(json, null, 2);
+
+                if (status === 'done') {
+                    clearInterval(pollInterval);
+                    // render real analysis if present, else fallback to simulateAnalysis
+                    if (json.summary_points || json.detailed_summary || json.assigned_department || json.tags) {
+                    renderAnalysisFromBackend(originalFile, json);
+                    } else {
+                    // no analysis fields: fallback to simulateAnalysis (but show that actual backend finished)
+                    simulateAnalysis(originalFile, { note: 'Backend processed file but returned no analysis fields.' });
+                    }
+                } else if (status === 'failed' || status === 'error') {
+                    clearInterval(pollInterval);
+                    output.textContent = 'Processing failed for meta_id: ' + metaId + '\n\n' + JSON.stringify(json, null, 2);
+                    // fallback
+                    simulateAnalysis(originalFile, { note: 'Backend reported failure. Using local simulated analysis.' });
+                }
+                // else keep polling
+                } catch (err) {
+                console.error('poll error', err);
+                clearInterval(pollInterval);
+                output.textContent = 'Poll error: ' + err.message;
+                simulateAnalysis(originalFile, { note: 'Polling failed, showing simulated analysis.' });
+                }
+            };
+
+            // run immediately and then every 2.5s
+            await poll();
+            var pollInterval = setInterval(poll, 2500);
+            }
+
+            /* -----------------------
+            Render analysis returned by backend into the UI
+            ------------------------*/
+            function renderAnalysisFromBackend(file, json) {
+            // build safe fallback fields
+            const summaryPoints = json.summary_points || (json.key_points || []);
+            const detailedSummary = json.detailed_summary || json.excerpt || '';
+            const department = json.assigned_department || json.primary_tag || 'General';
+            const keywords = json.tags || [];
+
+            // Update file preview (reuse existing preview logic for type)
+            if (file.type === 'application/pdf') {
+                filePreview.innerHTML = `
+                <div class="text-center py-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
+                    <p class="text-gray-600">PDF Document</p>
+                    <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+                `;
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                filePreview.innerHTML = `
+                    <div class="text-center">
+                    <img src="${e.target.result}" alt="${file.name}" class="max-h-52 mx-auto rounded-lg">
+                    <h3 class="font-semibold text-lg text-gray-800 mt-4">${file.name}</h3>
+                    <p class="text-gray-600">Image File</p>
+                    </div>
+                `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                filePreview.innerHTML = `
+                <div class="text-center py-8">
+                    <h3 class="font-semibold text-lg text-gray-800">${file.name}</h3>
+                    <p class="text-gray-600">Document</p>
+                    <p class="text-sm text-gray-500 mt-2">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+                `;
+            }
+
+            // Render summary
             summaryContent.innerHTML = `
                 <div>
-                    <h4 class="font-semibold text-gray-800 mb-2">Key Points</h4>
-                    <div class="text-sm text-gray-600 mb-4">
-                        ${summaryPoints.map(point => `<div class="summary-point">${point}</div>`).join('')}
-                    </div>
-                    
-                    <h4 class="font-semibold text-gray-800 mb-2">Keywords</h4>
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        ${keywords.map(keyword => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${keyword}</span>`).join('')}
-                    </div>
-                    
-                    <h4 class="font-semibold text-gray-800 mb-2">Assigned Department</h4>
-                    <p class="text-gray-600">${department}</p>
+                <h4 class="font-semibold text-gray-800 mb-2">Key Points</h4>
+                <div class="text-sm text-gray-600 mb-4">
+                    ${Array.isArray(summaryPoints) && summaryPoints.length ? summaryPoints.map(p => `<div class="summary-point">${p}</div>`).join('') : '<div class="summary-point">No summary provided by backend.</div>'}
+                </div>
+
+                <h4 class="font-semibold text-gray-800 mb-2">Keywords</h4>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    ${Array.isArray(keywords) && keywords.length ? keywords.map(k => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${k}</span>`).join('') : '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">none</span>'}
+                </div>
+
+                <h4 class="font-semibold text-gray-800 mb-2">Assigned Department</h4>
+                <p class="text-gray-600">${department}</p>
                 </div>
             `;
-            
-            // Set up PDF download with detailed summary
-            setupPdfDownload(file.name, summaryPoints, detailedSummary, department, keywords);
-        }
 
-        // Set up PDF download functionality
-        function setupPdfDownload(filename, summaryPoints, detailedSummary, department, keywords) {
+            // hook pdf download to use the returned details
+            setupPdfDownload(file.name, summaryPoints, detailedSummary, department, keywords);
+            }
+
+            /* -----------------------
+            If backend missing analysis fields, keep your original simulateAnalysis as fallback.
+            We'll keep signature simulateAnalysis(file, extras)
+            ------------------------*/
+            function simulateAnalysis(file, extras = {}) {
+            // copy / reuse your existing simulation logic (shortened here for brevity)
+            // The original simulation built department, keywords, summaryPoints, detailedSummary.
+            // For clarity: you can keep the full function from your current file here.
+            // For now, fallback to a minimal local simulation:
+
+            let department = "General Administration";
+            let keywords = ["general"];
+            let summaryPoints = ["No backend analysis available — showing simulated summary."];
+            let detailedSummary = "Simulated detailed summary. " + (extras.note || "");
+
+            // simple heuristics from filename (replicating your earlier logic)
+            const name = file.name.toLowerCase();
+            if (name.includes('safety')) {
+                department = "Safety Department";
+                keywords = ["safety","audit"];
+                summaryPoints = ["Safety audit — simulated: immediate attention required."];
+                detailedSummary = "Simulated safety detailed summary.";
+            } else if (name.includes('financial') || name.includes('budget')) {
+                department = "Finance Department";
+                keywords = ["finance","budget"];
+                summaryPoints = ["Financial summary — simulated: revenue above projections."];
+                detailedSummary = "Simulated finance detailed summary.";
+            }
+
+            // render UI same as real backend
+            renderAnalysisFromBackend(file, {
+                summary_points: summaryPoints,
+                detailed_summary: detailedSummary,
+                assigned_department: department,
+                tags: keywords
+            });
+            }
+
+            /* -----------------------
+            PDF download re-used from your existing implementation but uses passed values
+            ------------------------*/
+            function setupPdfDownload(filename, summaryPoints, detailedSummary, department, keywords) {
             downloadPdfBtn.onclick = () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                
-                // Add logo and header
-                doc.setFillColor(37, 99, 235);
+
+                // Header
+                doc.setFillColor(11, 60, 70);
                 doc.rect(0, 0, 220, 30, 'F');
-                doc.setFontSize(20);
-                doc.setTextColor(255, 255, 255);
-                doc.text('Kochi Metro Rail Limited', 105, 17, { align: 'center' });
+                doc.setFontSize(18);
+                doc.setTextColor(255, 223, 0);
+                doc.text('Kochi Metro Rail', 105, 18, { align: 'center' });
                 doc.setFontSize(12);
-                doc.text('Document Analysis Report', 105, 24, { align: 'center' });
-                
-                // Document information
+                doc.setTextColor(255, 255, 255);
+                doc.text('Document Analysis Report', 105, 26, { align: 'center' });
+
+                // Document info
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`File: ${filename}`, 14, 48);
+                doc.setFontSize(10);
+                doc.setTextColor(80, 80, 80);
+                doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 54);
+
+                // Executive Summary
                 doc.setFontSize(14);
-                doc.setTextColor(0, 0, 0);
-                doc.text(`File: ${filename}`, 14, 45);
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 52);
-                
-                // Summary section
-                doc.setFontSize(16);
-                doc.setTextColor(37, 99, 235);
-                doc.text('Executive Summary', 14, 65);
-                doc.setDrawColor(37, 99, 235);
-                doc.line(14, 67, 80, 67);
-                
+                doc.setTextColor(11, 60, 70);
+                doc.text('Executive Summary', 14, 70);
+                doc.setDrawColor(11, 60, 70);
+                doc.line(14, 72, 80, 72);
+
                 doc.setFontSize(11);
                 doc.setTextColor(0, 0, 0);
-                let yPosition = 75;
-                
-                summaryPoints.forEach(point => {
-                    if (yPosition > 250) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    doc.text('• ' + point, 16, yPosition);
-                    yPosition += 7;
+                let yPos = 80;
+                if (Array.isArray(summaryPoints)) {
+                summaryPoints.forEach(pt => {
+                    if (yPos > 250) { doc.addPage(); yPos = 20; }
+                    doc.text('• ' + pt, 16, yPos);
+                    yPos += 7;
                 });
-                
-                // Detailed analysis section
-                if (yPosition > 220) {
-                    doc.addPage();
-                    yPosition = 20;
-                } else {
-                    yPosition += 10;
+                } else if (typeof summaryPoints === 'string') {
+                const lines = doc.splitTextToSize(summaryPoints, 180);
+                doc.text(lines, 14, yPos);
+                yPos += lines.length * 7;
                 }
-                
-                doc.setFontSize(16);
-                doc.setTextColor(37, 99, 235);
-                doc.text('Detailed Analysis', 14, yPosition);
-                doc.line(14, yPosition + 2, 80, yPosition + 2);
-                
+
+                // Detailed Analysis
+                if (yPos > 220) { doc.addPage(); yPos = 20; } else { yPos += 10; }
+                doc.setFontSize(14);
+                doc.setTextColor(11, 60, 70);
+                doc.text('Detailed Analysis', 14, yPos);
+                doc.line(14, yPos + 2, 80, yPos + 2);
                 doc.setFontSize(11);
                 doc.setTextColor(0, 0, 0);
-                yPosition += 10;
-                
-                const splitText = doc.splitTextToSize(detailedSummary, 180);
-                doc.text(splitText, 14, yPosition);
-                
-                // Department and keywords section
-                const pageHeight = doc.internal.pageSize.height;
-                doc.setFontSize(16);
-                doc.setTextColor(37, 99, 235);
-                doc.text('Metadata', 14, pageHeight - 60);
-                doc.line(14, pageHeight - 58, 50, pageHeight - 58);
-                
-                doc.setFontSize(11);
-                doc.setTextColor(0, 0, 0);
-                doc.text(`Assigned Department: ${department}`, 14, pageHeight - 50);
-                doc.text(`Keywords: ${keywords.join(', ')}`, 14, pageHeight - 43);
-                
-                // Footer
+                yPos += 10;
+                const splitText = doc.splitTextToSize(detailedSummary || '', 180);
+                doc.text(splitText, 14, yPos);
+
+                // Metadata
+                const pageH = doc.internal.pageSize.height;
+                doc.setFontSize(12);
+                doc.setTextColor(11, 60, 70);
+                doc.text('Metadata', 14, pageH - 60);
                 doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Assigned Department: ${department}`, 14, pageH - 50);
+                doc.text(`Keywords: ${Array.isArray(keywords) ? keywords.join(', ') : keywords}`, 14, pageH - 43);
+
+                // Footer
+                doc.setFontSize(9);
                 doc.setTextColor(100, 100, 100);
-                doc.text('Kochi Metro Rail Limited - Document Management System', 105, pageHeight - 10, { align: 'center' });
-                
-                // Save the PDF
-                doc.save(`KM_Report_${filename.split('.')[0]}.pdf`);
+                doc.text('Kochi Metro Rail Limited - Document Management System', 105, pageH - 10, { align: 'center' });
+
+                doc.save(`KM_Report_${filename.replace(/\.[^/.]+$/, "")}.pdf`);
             };
-        }
+            }
     </script>
 </body>
 </html>

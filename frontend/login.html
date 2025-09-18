@@ -379,99 +379,69 @@
     </div>
 
     <script>
-        // Toggle between login and signup forms
-        document.getElementById('showSignup').addEventListener('click', function() {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('signupSection').classList.add('active');
+        /* ---- Helper to call backend APIs and auto-refresh token on 401 ---- */
+        async function apiFetch(path, opts = {}) {
+        opts.headers = opts.headers || {};
+        const token = localStorage.getItem('access_token');
+        if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+        // same-origin requests: credentials included so cookies (refresh cookie) work
+        opts.credentials = 'include';
+
+        let res = await fetch(path, opts);
+
+        // if access token expired -> try refresh flow once
+        if (res.status === 401) {
+            const r = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
+            if (r.ok) {
+            const data = await r.json();
+            localStorage.setItem('access_token', data.access_token);
+            // try original request again with new token
+            opts.headers['Authorization'] = 'Bearer ' + data.access_token;
+            res = await fetch(path, opts);
+            }
+        }
+        return res;
+        }
+
+        /* ---- login() sends credentials to backend and stores access token ---- */
+        async function login(username, password) {
+        const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'   // important so the refresh cookie set by server is stored
         });
-        
-        document.getElementById('showLogin').addEventListener('click', function() {
-            document.getElementById('signupSection').classList.remove('active');
-            document.getElementById('loginSection').classList.remove('hidden');
-        });
-        
-        // Login form validation
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            let isValid = true;
-            
-            // Simple validation
-            if (username.trim() === '') {
-                document.getElementById('usernameError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('usernameError').style.display = 'none';
-            }
-            
-            if (password === '') {
-                document.getElementById('passwordError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('passwordError').style.display = 'none';
-            }
-            
-            if (isValid) {
-                // In a real application, you would send this data to a server
-                alert('Login successful! Redirecting to dashboard...');
-                // Simulate redirect
-                setTimeout(function() {
-                    window.location.href = '#dashboard'; // Would be a real URL in practice
-                }, 1000);
-            }
-        });
-        
-        // Signup form validation
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const newUsername = document.getElementById('newUsername').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            let isValid = true;
-            
-            // Validation logic
-            
-            if (newUsername.trim() === '') {
-                document.getElementById('newUsernameError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('newUsernameError').style.display = 'none';
-            }
-            
-            if (email.trim() === '' || !email.includes('@')) {
-                document.getElementById('emailError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('emailError').style.display = 'none';
-            }
-            
-            if (newPassword.length < 8) {
-                document.getElementById('newPasswordError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('newPasswordError').style.display = 'none';
-            }
-            
-            if (newPassword !== confirmPassword) {
-                document.getElementById('confirmPasswordError').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('confirmPasswordError').style.display = 'none';
-            }
-            
-            if (isValid) {
-                // In a real application, you would send this data to a server
-                alert('Account created successfully! You can now login.');
-                // Switch back to login form
-                document.getElementById('signupSection').classList.remove('active');
-                document.getElementById('loginSection').classList.remove('hidden');
-            }
-        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Login failed');
+        }
+
+        const data = await res.json();
+        localStorage.setItem('access_token', data.access_token);
+        return data;
+        }
+
+        /* ---- Hook form submit ---- */
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+            await login(username, password);
+            // successful -> go to home/dashboard
+            window.location.href = '/home.html';
+        } catch (err) {
+            alert('Login failed: ' + err.message);
+            console.error(err);
+        }
+        }); 
+
+        /* ---- Example: call protected endpoint ----
+        Use apiFetch('/files') to call protected endpoints that require Authorization.
+        */
     </script>
+
 </body>
 </html>
