@@ -5,13 +5,9 @@ import gridfs
 from bson.objectid import ObjectId
 import requests
 import pdfplumber
-import bcrypt
-import jwt
 from docx import Document as DocxDocument
 from langdetect import detect, DetectorFactory, LangDetectException
 from googletrans import Translator as GTranslator
-from functools import wraps
-from pymongo import ASCENDING, errors as pymongo_errors
 from flask_cors import CORS
 
 # Make langdetect deterministic
@@ -21,17 +17,11 @@ DetectorFactory.seed = 0
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("MONGO_DB", "kmrl_docs")
 USE_GCLOUD = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
-JWT_SECRET = os.getenv("JWT_SECRET", "dev_access_secret_change_me")
-REFRESH_SECRET = os.getenv("REFRESH_SECRET", "dev_refresh_secret_change_me")
-ACCESS_EXPIRES_MINUTES = int(os.getenv("ACCESS_EXPIRES_MINUTES", "15"))
-REFRESH_EXPIRES_DAYS = int(os.getenv("REFRESH_EXPIRES_DAYS", "7"))
-BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
-AUTH_COOKIE_NAME = "refresh_token"
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 
-# Serve frontend files (home.html, login.html, etc.) from the frontend folder
+# Serve frontend files (home.html, index.html, etc.) from the frontend folder
 app = Flask(
     __name__,
     static_folder=FRONTEND_DIR,
@@ -43,7 +33,7 @@ CORS(app, supports_credentials=True)
 @app.route('/', defaults={'path': 'home.html'})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    # send files from the frontend directory; this makes /, /home.html, /login.html work
+    # Send files from the frontend directory; this makes /, /home.html, /index.html work
     return send_from_directory(FRONTEND_DIR, path)
 
 logging.basicConfig(level=logging.INFO)
@@ -54,105 +44,6 @@ client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 fs = gridfs.GridFS(db)
 files_col = db["files"]  # metadata
-
-# Users collection
-users_col = db["users"]
-# ensure indexes
-try:
-    users_col.create_index([("username", ASCENDING)], unique=True)
-    users_col.create_index([("email", ASCENDING)], unique=True, sparse=True)
-except pymongo_errors.OperationFailure as e:
-    logger.warning(f"Could not create unique indexes on users collection: {e}")
-
-def hash_password(plain_pw: str) -> bytes:
-    return bcrypt.hashpw(plain_pw.encode("utf-8"), bcrypt.gensalt(BCRYPT_ROUNDS))
-
-def verify_password(plain_pw: str, pw_hash: bytes) -> bool:
-    try:
-        return bcrypt.checkpw(plain_pw.encode("utf-8"), pw_hash)
-    except Exception:
-        return False
-
-def sign_access_token(user_id, extra_claims=None):
-    payload = {
-        "sub": str(user_id),
-        "iat": datetime.datetime.utcnow(),
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=ACCESS_EXPIRES_MINUTES)
-    }
-    if extra_claims:
-        payload.update(extra_claims)
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
-def sign_refresh_token(user_id):
-    payload = {
-        "sub": str(user_id),
-        "iat": datetime.datetime.utcnow(),
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=REFRESH_EXPIRES_DAYS)
-    }
-    return jwt.encode(payload, REFRESH_SECRET, algorithm="HS256")
-
-def decode_access_token(token):
-    return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-
-def decode_refresh_token(token):
-    return jwt.decode(token, REFRESH_SECRET, algorithms=["HS256"])
-
-def set_refresh_cookie(resp, refresh_token):
-    # httpOnly & Secure recommended; set secure=True in production behind HTTPS
-    resp.set_cookie(
-        AUTH_COOKIE_NAME,
-        refresh_token,
-        httponly=True,
-        secure=False,                 # set True when you use HTTPS in production
-        samesite='Lax',               # Lax is fine when frontend is same-origin
-        max_age=REFRESH_EXPIRES_DAYS * 24 * 3600
-    )
-
-def clear_refresh_cookie(resp):
-    resp.delete_cookie(AUTH_COOKIE_NAME)
-
-def get_user_by_id(uid):
-    return users_col.find_one({"_id": ObjectId(uid)})
-
-def get_current_user_from_access_header():
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        return None
-    token = auth.split(" ", 1)[1].strip()
-    try:
-        payload = decode_access_token(token)
-        return get_user_by_id(payload.get("sub"))
-    except Exception:
-        return None
-
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        # Try access header first
-        user = get_current_user_from_access_header()
-        if user:
-            request.current_user = user
-            return f(*args, **kwargs)
-
-        # fallback: try refresh cookie -> rotate to new access token (optional)
-        refresh = request.cookies.get(AUTH_COOKIE_NAME)
-        if not refresh:
-            return jsonify({"error":"unauthorized"}), 401
-        try:
-            payload = decode_refresh_token(refresh)
-            uid = payload.get("sub")
-            user = get_user_by_id(uid)
-            if not user or not user.get("refresh_token_hash"):
-                return jsonify({"error":"unauthorized"}), 401
-            # verify cookie refresh token matches the hash in DB
-            if not bcrypt.checkpw(refresh.encode("utf-8"), user["refresh_token_hash"]):
-                return jsonify({"error":"unauthorized"}), 401
-            # OK user valid; attach and allow
-            request.current_user = user
-            return f(*args, **kwargs)
-        except Exception:
-            return jsonify({"error":"unauthorized"}), 401
-    return decorated
 
 # ---------- Translators ----------
 gtranslator = GTranslator()
@@ -375,7 +266,7 @@ def translate_ml_to_en(text):
     return " ".join(translated_chunks)
 
 # ---------- Processing pipeline ----------
-def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='upload', source_url=None, force_translate=False):
+def process_and_store(file_bytes, filename, filetype, uploaded_by="anonymous", source_type='upload', source_url=None, force_translate=False):
     # First, save the original file
     grid_id = save_file_to_gridfs(file_bytes, filename, filetype)
     meta_id = insert_metadata(filename, grid_id, filetype, uploaded_by, source_type, source_url, None, None, None)
@@ -390,9 +281,8 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
     # Check if the content is Malayalam
     mal = is_malayalam(extracted, detected_lang)
     
-    
     if not mal:
-        # NEW: CLASSIFY NON-MALAYALAM FILES
+        # CLASSIFY NON-MALAYALAM FILES
         tags, confidence_scores = classify_by_rules(extracted)
         update_document_with_tags(meta_id, tags, confidence_scores)
         
@@ -402,11 +292,10 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
             "translated": False, 
             "reason": "not_malayalam", 
             "language": detected_lang,
-            "tags": tags,  # NEW: Return tags
+            "tags": tags,
             "primary_tag": tags[0] if tags else 'miscellaneous'
         }
     
-
     # If Malayalam, create translation
     base_txt = os.path.splitext(filename)[0] + ".txt"
     existing = files_col.find_one({"parent_id": meta_id, "filename": base_txt})
@@ -433,9 +322,8 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
         base_txt, trans_grid_id, "text/plain", "system_translator", 
         "translation", None, meta_id, "en", "translated"
     )
-
     
-    # NEW: CLASSIFY THE TRANSLATED ENGLISH TEXT
+    # CLASSIFY THE TRANSLATED ENGLISH TEXT
     tags, confidence_scores = classify_by_rules(translated_text)
     update_document_with_tags(trans_meta_id, tags, confidence_scores)
     
@@ -445,7 +333,7 @@ def process_and_store(file_bytes, filename, filetype, uploaded_by, source_type='
         "original_meta_id": oid_to_str(meta_id), 
         "translated": True, 
         "translation_meta_id": oid_to_str(trans_meta_id),
-        "tags": tags,  # NEW: Return tags in response
+        "tags": tags,
         "primary_tag": tags[0] if tags else 'miscellaneous'
     }
 
@@ -545,108 +433,11 @@ def update_document_with_tags(meta_id, tags, confidence_scores):
     except Exception as e:
         logger.error(f"Failed to update document with tags: {e}")
         return False
-    
-# ======= AUTH ROUTES =======
-@app.route("/auth/register", methods=["POST"])
-def register():
-    data = request.get_json(force=True)
-    username = data.get("username")
-    password = data.get("password")
-    email = data.get("email")
-
-    if not username or not password:
-        return jsonify({"error":"username_and_password_required"}), 400
-
-    try:
-        pw_hash = hash_password(password)
-        user_doc = {
-            "username": username,
-            "email": email,
-            "password_hash": pw_hash,
-            "created_at": datetime.datetime.utcnow(),
-            "roles": ["user"],
-            "is_verified": False,
-            "refresh_token_hash": None
-        }
-        res = users_col.insert_one(user_doc)
-        return jsonify({"ok": True, "user_id": str(res.inserted_id)}), 201
-    except pymongo_errors.DuplicateKeyError:
-        return jsonify({"error":"username_or_email_taken"}), 409
-    except Exception as e:
-        logger.error(f"Register error: {traceback.format_exc()}")
-        return jsonify({"error":"register_failed", "details": str(e)}), 500
-
-@app.route("/auth/login", methods=["POST"])
-def login():
-    data = request.get_json(force=True)
-    username = data.get("username")
-    password = data.get("password")
-    if not username or not password:
-        return jsonify({"error":"username_and_password_required"}), 400
-
-    user = users_col.find_one({"username": username})
-    if not user:
-        return jsonify({"error":"invalid_credentials"}), 401
-
-    if not verify_password(password, user["password_hash"]):
-        return jsonify({"error":"invalid_credentials"}), 401
-
-    # Create tokens
-    access = sign_access_token(user["_id"], {"username": user["username"], "roles": user.get("roles", [])})
-    refresh = sign_refresh_token(user["_id"])
-
-    # Hash & store refresh token (so db leaks don't reveal reusable tokens)
-    refresh_hash = bcrypt.hashpw(refresh.encode("utf-8"), bcrypt.gensalt(BCRYPT_ROUNDS))
-    users_col.update_one({"_id": user["_id"]}, {"$set": {"refresh_token_hash": refresh_hash}})
-
-    resp = jsonify({"access_token": access, "expires_in_minutes": ACCESS_EXPIRES_MINUTES})
-    set_refresh_cookie(resp, refresh)
-    return resp, 200
-
-@app.route("/auth/refresh", methods=["POST"])
-def refresh_token():
-    refresh = request.cookies.get(AUTH_COOKIE_NAME)
-    if not refresh:
-        return jsonify({"error":"no_refresh_token"}), 401
-    try:
-        payload = decode_refresh_token(refresh)
-        uid = payload.get("sub")
-        user = get_user_by_id(uid)
-        if not user or not user.get("refresh_token_hash"):
-            return jsonify({"error":"invalid_refresh"}), 401
-        if not bcrypt.checkpw(refresh.encode("utf-8"), user["refresh_token_hash"]):
-            return jsonify({"error":"invalid_refresh"}), 401
-
-        # rotate refresh token
-        new_access = sign_access_token(uid, {"username": user["username"], "roles": user.get("roles", [])})
-        new_refresh = sign_refresh_token(uid)
-        new_refresh_hash = bcrypt.hashpw(new_refresh.encode("utf-8"), bcrypt.gensalt(BCRYPT_ROUNDS))
-        users_col.update_one({"_id": user["_id"]}, {"$set": {"refresh_token_hash": new_refresh_hash}})
-
-        resp = jsonify({"access_token": new_access, "expires_in_minutes": ACCESS_EXPIRES_MINUTES})
-        set_refresh_cookie(resp, new_refresh)
-        return resp, 200
-    except Exception as e:
-        logger.warning(f"Refresh failed: {e}")
-        return jsonify({"error":"invalid_refresh"}), 401
-
-@app.route("/auth/logout", methods=["POST"])
-@token_required
-def logout():
-    user = request.current_user
-    # remove stored refresh token hash so cookie becomes useless
-    users_col.update_one({"_id": user["_id"]}, {"$set": {"refresh_token_hash": None}})
-    resp = jsonify({"ok": True})
-    clear_refresh_cookie(resp)
-    return resp, 200
-# ======= END AUTH ROUTES =======
 
 # ---------- ROUTES ----------
 @app.route("/upload", methods=["POST"])
-@token_required
 def upload_route():
-    current_user = request.current_user
-    uploaded_by = current_user.get("username") if current_user else request.form.get("uploaded_by", "anonymous")
+    uploaded_by = request.form.get("uploaded_by", "anonymous")
     force_translate = request.form.get("force_translate", "false").lower() == "true"
     
     if "file" not in request.files:
@@ -828,12 +619,16 @@ def classify_document(meta_id):
         if not doc:
             return jsonify({"error": "Document not found"}), 404
         
-        # Get text content (you'll need to implement GridFS retrieval)
-        # For now, this is a placeholder - implement based on your GridFS setup
-        text = "Implement GridFS text retrieval here"
+        # Get text content from GridFS
+        try:
+            gf = fs.get(doc["gridfs_id"])
+            file_bytes = gf.read()
+            text, _ = extract_text_if_digital(file_bytes, doc["filename"], doc.get("content_type"))
+        except Exception as e:
+            return jsonify({"error": f"Could not retrieve document text: {str(e)}"}), 400
         
         if not text:
-            return jsonify({"error": "Could not retrieve document text"}), 400
+            return jsonify({"error": "Could not extract text from document"}), 400
         
         # Perform classification
         tags, confidence_scores = classify_by_rules(text)
@@ -854,7 +649,6 @@ def classify_document(meta_id):
             
     except Exception as e:
         return jsonify({"error": f"Classification error: {str(e)}"}), 500
- 
 
 @app.route("/search-by-tag/<tag>", methods=["GET"])
 def search_by_tag(tag):
@@ -939,7 +733,6 @@ def classification_status_with_meta_id():
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

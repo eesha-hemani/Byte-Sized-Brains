@@ -158,6 +158,8 @@
             transform: translateY(30px);
             animation: fadeInUp 1s ease-out forwards;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-decoration: none;
+            display: inline-block;
         }
         
         .btn-about {
@@ -166,7 +168,7 @@
             animation-delay: 1.1s;
         }
         
-        .btn-login {
+        .btn-main {
             background: linear-gradient(145deg, #ffdf00, #ffaa00);
             color: #000;
             animation-delay: 1.4s;
@@ -297,8 +299,8 @@
         <p class="tagline">Secure. Streamline. Smart.</p>
         
         <div class="buttons">
-            <button class="btn btn-about" onclick="window.location.href='about.html'">About</button>
-            <button class="btn btn-login" onclick="window.location.href='login.html'">Login</button>
+            <a href="about.html" class="btn btn-about">About</a>
+            <a href="index.html" class="btn btn-main">Get Started</a>
         </div>
     </div>
 
