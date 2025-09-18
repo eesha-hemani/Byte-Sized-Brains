@@ -1,9 +1,11 @@
-flask
+Flask
 pymongo
 requests
 pdfplumber
 python-docx
 langdetect
 googletrans==4.0.0-rc1
-google-generativeai
+Flask-Cors
 python-dotenv
+sumy
+nltk
