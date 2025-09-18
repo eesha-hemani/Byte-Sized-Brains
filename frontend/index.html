@@ -556,39 +556,104 @@
             Upload file to backend: POST /ingest/upload (multipart/form-data)
             Expects JSON response { success: true, meta_id: "<id>" }
             ------------------------*/
-            async function uploadToServer(file, onProgress) {
-            const fd = new FormData();
-            fd.append('file', file, file.name);
+            // Replace the uploadToServer function in index.html with this fixed version:
 
-            // use XMLHttpRequest to allow progress callback
-            return await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/ingest/upload', true);
-                xhr.withCredentials = true; // ensure cookies sent/received
+/* -----------------------
+Upload file to backend: POST /upload (multipart/form-data) 
+Note: Backend endpoint is /upload, not /ingest/upload
+------------------------*/
+async function uploadToServer(file, onProgress) {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
 
-                xhr.upload.onprogress = (ev) => {
-                if (ev.lengthComputable && typeof onProgress === 'function') {
-                    onProgress(Math.round((ev.loaded / ev.total) * 100));
-                }
-                };
+    // Get access token for Authorization header
+    const token = localStorage.getItem('access_token');
 
-                xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
+    return await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);  // Fixed: was /ingest/upload
+        xhr.withCredentials = true;
+
+        // Add authorization header if we have a token
+        if (token) {
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+        }
+
+        xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable && typeof onProgress === 'function') {
+                onProgress(Math.round((ev.loaded / ev.total) * 100));
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
                     const json = JSON.parse(xhr.responseText);
                     resolve(json);
-                    } catch (e) {
+                } catch (e) {
                     reject(new Error('Invalid JSON response from server'));
-                    }
-                } else {
-                    reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}\n${xhr.responseText}`));
                 }
-                };
-
-                xhr.onerror = () => reject(new Error('Network error during upload'));
-                xhr.send(fd);
-            });
+            } else if (xhr.status === 401) {
+                // Token expired, try to refresh
+                refreshTokenAndRetry();
+            } else {
+                reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}\n${xhr.responseText}`));
             }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.send(fd);
+
+        // Helper function to refresh token and retry upload
+        async function refreshTokenAndRetry() {
+            try {
+                const res = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    
+                    // Retry the upload with new token
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + data.access_token);
+                    xhr.send(fd);
+                } else {
+                    reject(new Error('Authentication failed - please log in again'));
+                    // Redirect to login
+                    window.location.href = '/login.html';
+                }
+            } catch (e) {
+                reject(new Error('Authentication failed - please log in again'));
+                window.location.href = '/login.html';
+            }
+        }
+    });
+}
+
+// Also add this authentication check at the top of the index.html script:
+/* ---- Check authentication on page load ---- */
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        // No token, redirect to login
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Verify token is valid by calling a protected endpoint
+    try {
+        const res = await apiFetch('/files');
+        if (!res.ok) {
+            throw new Error('Token invalid');
+        }
+        
+        // Token is valid, load files if needed
+        // You can add code here to populate the suggested files table
+        
+    } catch (e) {
+        // Token invalid, redirect to login
+        localStorage.removeItem('access_token');
+        window.location.href = '/login.html';
+    }
+});
 
             /* -----------------------
             Main file handler: upload -> trigger classify -> poll status -> display result
@@ -908,6 +973,174 @@
                 doc.save(`KM_Report_${filename.replace(/\.[^/.]+$/, "")}.pdf`);
             };
             }
+            document.addEventListener('DOMContentLoaded', () => {
+    // Add click handlers to sidebar category links
+    const categoryLinks = document.querySelectorAll('.sidebar a[href="#"]');
+    
+    categoryLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active state from all links
+            categoryLinks.forEach(l => {
+                l.classList.remove('bg-blue-50');
+                l.querySelector('div')?.classList.remove('bg-blue-500');
+            });
+            
+            // Add active state to clicked link
+            link.classList.add('bg-blue-50');
+            const colorDiv = link.querySelector('div');
+            if (colorDiv) {
+                colorDiv.classList.add('bg-blue-500');
+            }
+            
+            // Get category from link text
+            const categoryText = link.textContent.trim();
+            let filterTag = '';
+            
+            switch (categoryText) {
+                case 'Safety Reports':
+                    filterTag = 'safety_reports';
+                    break;
+                case 'Invoices':
+                    filterTag = 'invoices';
+                    break;
+                case 'Engineering Drawings':
+                    filterTag = 'engineering_drawings';
+                    break;
+                case 'Urgent':
+                    filterTag = 'urgent';
+                    break;
+                case 'Miscellaneous':
+                    filterTag = 'miscellaneous';
+                    break;
+                case 'My Drive':
+                default:
+                    filterTag = 'all';
+                    break;
+            }
+            
+            // Load files for this category
+            loadFilesByCategory(filterTag);
+        });
+    });
+});
+
+/* ---- Load files by category ---- */
+async function loadFilesByCategory(category) {
+    try {
+        let url = '/files';
+        if (category !== 'all') {
+            url = `/search-by-tag/${category}`;
+        }
+        
+        const res = await apiFetch(url);
+        if (!res.ok) {
+            throw new Error('Failed to load files');
+        }
+        
+        const data = await res.json();
+        
+        // Update the suggested files table
+        updateFilesTable(data, category);
+        
+        // Update header to show what's being viewed
+        const header = document.querySelector('main h2');
+        if (header) {
+            const categoryName = category === 'all' ? 'All Documents' : 
+                               category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            header.textContent = `${categoryName}`;
+        }
+        
+    } catch (err) {
+        console.error('Failed to load category files:', err);
+        alert('Failed to load files: ' + err.message);
+    }
+}
+
+/* ---- Update files table with new data ---- */
+function updateFilesTable(data, category) {
+    const tbody = document.querySelector('tbody');
+    if (!tbody) return;
+    
+    // Handle different response formats
+    let files = [];
+    if (Array.isArray(data)) {
+        files = data;  // Direct array from /files
+    } else if (data.documents && Array.isArray(data.documents)) {
+        files = data.documents;  // From /search-by-tag
+    }
+    
+    if (files.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                    No documents found in this category
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = files.map(file => {
+        const fileExtension = file.filename ? file.filename.split('.').pop().toLowerCase() : 'unknown';
+        const fileSize = file.size ? (file.size / 1024 / 1024).toFixed(1) + ' MB' : 'Unknown size';
+        
+        // Determine icon and color based on file type
+        let iconClass = 'fa-file';
+        let colorClass = 'bg-gray-100 text-gray-600';
+        
+        if (fileExtension === 'pdf') {
+            iconClass = 'fa-file-pdf';
+            colorClass = 'bg-red-100 text-red-600';
+        } else if (['doc', 'docx'].includes(fileExtension)) {
+            iconClass = 'fa-file-word';
+            colorClass = 'bg-blue-100 text-blue-600';
+        } else if (['xls', 'xlsx'].includes(fileExtension)) {
+            iconClass = 'fa-file-excel';
+            colorClass = 'bg-green-100 text-green-600';
+        } else if (fileExtension === 'txt') {
+            iconClass = 'fa-file-text';
+            colorClass = 'bg-yellow-100 text-yellow-600';
+        }
+        
+        // Determine department color bar
+        let deptClass = 'department-general';
+        const tag = file.tags?.[0] || file.category || 'miscellaneous';
+        if (tag === 'safety_reports') deptClass = 'department-safety';
+        else if (tag === 'invoices') deptClass = 'department-finance';
+        else if (tag === 'engineering_drawings') deptClass = 'department-engineering';
+        else if (tag === 'urgent') deptClass = 'department-pr';
+        
+        return `
+            <tr class="${deptClass} hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 ${colorClass} rounded-lg flex items-center justify-center">
+                            <i class="fas ${iconClass} h-6 w-6"></i>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${file.filename || 'Unknown'}</div>
+                            <div class="text-sm text-gray-500">${fileExtension.toUpperCase()}, ${fileSize}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        ${file.uploaded_at ? 'Uploaded • ' + new Date(file.uploaded_at).toLocaleTimeString() : 'Unknown time'}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${file.uploaded_by || 'Unknown'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${tag.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    ${file.meta_id ? `<br><a href="/download/${file.meta_id}" class="text-blue-600 hover:text-blue-800">Download</a>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
     </script>
 </body>
 </html>

@@ -381,66 +381,199 @@
     <script>
         /* ---- Helper to call backend APIs and auto-refresh token on 401 ---- */
         async function apiFetch(path, opts = {}) {
-        opts.headers = opts.headers || {};
-        const token = localStorage.getItem('access_token');
-        if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-        // same-origin requests: credentials included so cookies (refresh cookie) work
-        opts.credentials = 'include';
+    opts.headers = opts.headers || {};
+    const token = localStorage.getItem('access_token');
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    opts.credentials = 'include';
 
-        let res = await fetch(path, opts);
+    let res = await fetch(path, opts);
 
-        // if access token expired -> try refresh flow once
-        if (res.status === 401) {
+    // if access token expired -> try refresh flow once
+    if (res.status === 401) {
+        try {
             const r = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
             if (r.ok) {
-            const data = await r.json();
-            localStorage.setItem('access_token', data.access_token);
-            // try original request again with new token
-            opts.headers['Authorization'] = 'Bearer ' + data.access_token;
-            res = await fetch(path, opts);
+                const data = await r.json();
+                localStorage.setItem('access_token', data.access_token);
+                opts.headers['Authorization'] = 'Bearer ' + data.access_token;
+                res = await fetch(path, opts);
             }
+        } catch (e) {
+            console.warn('Token refresh failed:', e);
         }
-        return res;
+    }
+    return res;
+}
+
+/* ---- Login function ---- */
+async function login(username, password) {
+    const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include'
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Login failed');
+    }
+
+    const data = await res.json();
+    localStorage.setItem('access_token', data.access_token);
+    return data;
+}
+
+/* ---- Registration function ---- */
+async function register(username, email, password) {
+    const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+        credentials: 'include'
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Registration failed');
+    }
+
+    const data = await res.json();
+    return data;
+}
+
+/* ---- Show/hide forms ---- */
+document.getElementById('showSignup').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('signupSection').classList.add('active');
+});
+
+document.getElementById('showLogin').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('signupSection').classList.remove('active');
+    document.getElementById('loginSection').classList.remove('hidden');
+});
+
+/* ---- Form validation helpers ---- */
+function showError(elementId, message) {
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+}
+
+function hideError(elementId) {
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.style.display = 'none';
+    }
+}
+
+function hideAllErrors() {
+    const errorElements = document.querySelectorAll('.error-message');
+    errorElements.forEach(el => el.style.display = 'none');
+}
+
+/* ---- Login form handler ---- */
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAllErrors();
+    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    // Basic validation
+    if (!username) {
+        showError('usernameError', 'Username is required');
+        return;
+    }
+    if (!password) {
+        showError('passwordError', 'Password is required');
+        return;
+    }
+
+    try {
+        await login(username, password);
+        // Successful login -> redirect to main app
+        window.location.href = '/index.html';
+    } catch (err) {
+        showError('passwordError', err.message);
+        console.error('Login error:', err);
+    }
+});
+
+/* ---- Registration form handler ---- */
+document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAllErrors();
+    
+    const username = document.getElementById('newUsername').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Validation
+    let hasErrors = false;
+
+    if (!username) {
+        showError('newUsernameError', 'Username is required');
+        hasErrors = true;
+    }
+    
+    if (!email || !email.includes('@')) {
+        showError('emailError', 'Valid email is required');
+        hasErrors = true;
+    }
+    
+    if (password.length < 8) {
+        showError('newPasswordError', 'Password must be at least 8 characters');
+        hasErrors = true;
+    }
+    
+    if (password !== confirmPassword) {
+        showError('confirmPasswordError', 'Passwords do not match');
+        hasErrors = true;
+    }
+
+    if (hasErrors) return;
+
+    try {
+        await register(username, email, password);
+        
+        // Registration successful -> automatically log them in
+        await login(username, password);
+        window.location.href = '/index.html';
+        
+    } catch (err) {
+        // Show appropriate error based on the error message
+        if (err.message.includes('username_or_email_taken')) {
+            showError('newUsernameError', 'Username or email already exists');
+        } else {
+            showError('newUsernameError', err.message);
         }
+        console.error('Registration error:', err);
+    }
+});
 
-        /* ---- login() sends credentials to backend and stores access token ---- */
-        async function login(username, password) {
-        const res = await fetch('/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-            credentials: 'include'   // important so the refresh cookie set by server is stored
-        });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || 'Login failed');
-        }
-
-        const data = await res.json();
-        localStorage.setItem('access_token', data.access_token);
-        return data;
-        }
-
-        /* ---- Hook form submit ---- */
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-
+/* ---- Check if user is already logged in ---- */
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        // Try to verify token is still valid
         try {
-            await login(username, password);
-            // successful -> go to home/dashboard
-            window.location.href = '/home.html';
-        } catch (err) {
-            alert('Login failed: ' + err.message);
-            console.error(err);
+            const res = await apiFetch('/files');
+            if (res.ok) {
+                // Token is valid, redirect to main app
+                window.location.href = '/index.html';
+            }
+        } catch (e) {
+            // Token invalid, stay on login page
+            localStorage.removeItem('access_token');
         }
-        }); 
-
-        /* ---- Example: call protected endpoint ----
-        Use apiFetch('/files') to call protected endpoints that require Authorization.
-        */
+    }
+});
     </script>
 
 </body>

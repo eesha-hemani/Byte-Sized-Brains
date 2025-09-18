@@ -12,6 +12,7 @@ from langdetect import detect, DetectorFactory, LangDetectException
 from googletrans import Translator as GTranslator
 from functools import wraps
 from pymongo import ASCENDING, errors as pymongo_errors
+from flask_cors import CORS
 
 # Make langdetect deterministic
 DetectorFactory.seed = 0
@@ -37,6 +38,7 @@ app = Flask(
     static_url_path="",
     template_folder=FRONTEND_DIR
 )
+CORS(app, supports_credentials=True)
 
 @app.route('/', defaults={'path': 'home.html'})
 @app.route('/<path:path>')
@@ -193,6 +195,17 @@ def get_metadata(meta_id):
 
 def update_metadata(meta_id, patch: dict):
     files_col.update_one({"_id": ObjectId(meta_id)}, {"$set": patch})
+
+def get_department_from_tag(tag):
+    """Map classification tags to department names"""
+    department_mapping = {
+        'invoices': 'Finance Department',
+        'safety_reports': 'Safety Department', 
+        'urgent': 'Priority Management Office',
+        'engineering_drawings': 'Engineering Department',
+        'miscellaneous': 'General Administration'
+    }
+    return department_mapping.get(tag, 'General Administration')
 
 # ---------- Download helper (Google Drive and SharePoint) ----------
 def download_url_to_bytes(url, timeout=30):
@@ -677,7 +690,7 @@ def ingest_link_route():
         return jsonify({"error": "processing_failed", "details": str(e)}), 500
 
 @app.route("/files", methods=["GET"])
-def list_files():
+def list_files_enhanced():
     out = []
     for r in files_col.find().sort("uploaded_at", -1).limit(200):
         out.append({
@@ -690,7 +703,13 @@ def list_files():
             "source_url": r.get("source_url"),
             "parent_id": oid_to_str(r.get("parent_id")),
             "language": r.get("language"),
-            "translation_status": r.get("translation_status")
+            "translation_status": r.get("translation_status"),
+            # Add classification fields
+            "category": r.get("category"),
+            "tags": r.get("tags", []),
+            "confidence_scores": r.get("confidence_scores", {}),
+            "classification_status": r.get("classification_status"),
+            "classified_at": r.get("classified_at").isoformat() if r.get("classified_at") else None
         })
     return jsonify(out)
 
@@ -862,30 +881,64 @@ def search_by_tag(tag):
         return jsonify({"error": str(e)}), 500
 
 @app.route("/classification-status", methods=["GET"])
-def classification_status():
-    """Get classification statistics"""
-    try:
-        total_files = files_col.count_documents({})
-        classified_files = files_col.count_documents({"classification_status": "completed"})
-        
-        # Get tag distribution
-        pipeline = [
-            {"$match": {"classification_status": "completed"}},
-            {"$unwind": "$tags"},
-            {"$group": {"_id": "$tags", "count": {"$sum": 1}}}
-        ]
-        tag_stats = list(files_col.aggregate(pipeline))
-        
-        return jsonify({
-            "success": True,
-            "total_files": total_files,
-            "classified_files": classified_files,
-            "completion_rate": (classified_files / total_files * 100) if total_files > 0 else 0,
-            "tag_distribution": {stat["_id"]: stat["count"] for stat in tag_stats}
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+def classification_status_with_meta_id():
+    """Get classification status for a specific document or overall stats"""
+    meta_id = request.args.get("meta_id")
+    
+    if meta_id:
+        # Get specific document status
+        try:
+            doc = files_col.find_one({"_id": ObjectId(meta_id)})
+            if not doc:
+                return jsonify({"error": "Document not found"}), 404
+            
+            # Determine status based on document fields
+            if doc.get("classification_status") == "completed":
+                status = "done"
+            elif doc.get("translation_status") == "failed":
+                status = "failed"
+            else:
+                status = "processing"
+            
+            return jsonify({
+                "success": True,
+                "status": status,
+                "meta_id": meta_id,
+                "tags": doc.get("tags", []),
+                "primary_tag": doc.get("category", "miscellaneous"),
+                "assigned_department": get_department_from_tag(doc.get("category", "miscellaneous")),
+                "confidence_scores": doc.get("confidence_scores", {}),
+                "classification_method": doc.get("classification_method", "rules_based"),
+                "language": doc.get("language"),
+                "translation_status": doc.get("translation_status")
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        # Return overall classification statistics (existing logic)
+        try:
+            total_files = files_col.count_documents({})
+            classified_files = files_col.count_documents({"classification_status": "completed"})
+            
+            # Get tag distribution
+            pipeline = [
+                {"$match": {"classification_status": "completed"}},
+                {"$unwind": "$tags"},
+                {"$group": {"_id": "$tags", "count": {"$sum": 1}}}
+            ]
+            tag_stats = list(files_col.aggregate(pipeline))
+            
+            return jsonify({
+                "success": True,
+                "total_files": total_files,
+                "classified_files": classified_files,
+                "completion_rate": (classified_files / total_files * 100) if total_files > 0 else 0,
+                "tag_distribution": {stat["_id"]: stat["count"] for stat in tag_stats}
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
     
 
 if __name__ == "__main__":
