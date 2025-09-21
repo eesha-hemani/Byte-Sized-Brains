@@ -23,11 +23,6 @@ KDocAI is an intelligent document management system that automatically classifie
 - **Urgent Documents**: Time-sensitive materials
 - **Miscellaneous**: General document categorization
 
-### 🌐 **Multi-Platform Integration**
-- **Google Drive Support**: Direct cloud integration
-- **SharePoint Connectivity**: Enterprise document management
-- **RESTful API**: Seamless third-party integrations
-
 ### 🔍 **Advanced Search & Retrieval**
 - **Multi-tag Support**: Documents can have multiple categories
 - **Cross-language Search**: Find content across English and Malayalam
@@ -38,16 +33,11 @@ KDocAI is an intelligent document management system that automatically classifie
 - **Python** with Flask framework
 - **MongoDB** with GridFS for document storage
 - **PyMongo** for database operations
-- **Google Translate API** for Malayalam-English translation
+- **Google Translate** for Malayalam-English translation
 
 ### **AI/ML Components**
 - **Custom rule-based engine** for document categorization
 - **Language detection** and processing
-
-### **Infrastructure**
-- **RESTful APIs** for all operations
-- **JWT Authentication** (ready for implementation)
-- **Cloud-ready** architecture
 
 ## 📦 Installation
 
