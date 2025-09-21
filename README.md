@@ -14,7 +14,7 @@ KDocAI is an intelligent document management system that automatically classifie
 ### 📁 **Smart Document Processing**
 - **Multi-format Support**: PDF, DOCX, TXT, Images
 - **Malayalam-English Integration**: Automatic translation and tagging
-- **Hybrid Classification**: Rules-based + AI-powered categorization
+- **Classification**: Rules-based 
 
 ### 🏷️ **Automatic Classification**
 - **Invoice Detection**: Financial documents and payments
