@@ -39,6 +39,11 @@ KDocAI is an intelligent document management system that automatically classifie
 - **Custom rule-based engine** for document categorization
 - **Language detection** and processing
 
+### **Frontend**
+- **React.js**
+- **HTML**
+- **CSS**
+
 ## 📦 Installation
 
 ### **Prerequisites**
