@@ -30,7 +30,6 @@ KDocAI is an intelligent document management system that automatically classifie
 
 ### 🔍 **Advanced Search & Retrieval**
 - **Multi-tag Support**: Documents can have multiple categories
-- **Confidence Scoring**: Intelligent match accuracy ratings
 - **Cross-language Search**: Find content across English and Malayalam
 
 ## 🛠️ Technology Stack
@@ -42,7 +41,6 @@ KDocAI is an intelligent document management system that automatically classifie
 - **Google Translate API** for Malayalam-English translation
 
 ### **AI/ML Components**
-- **Transformers** for NLP classification
 - **Custom rule-based engine** for document categorization
 - **Language detection** and processing
 
